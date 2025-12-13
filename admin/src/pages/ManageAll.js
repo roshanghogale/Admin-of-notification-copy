@@ -802,7 +802,7 @@ function ManageAll() {
         <Grid container spacing={2}>
           {documents.map((document) => {
             const imageUrl = document.imageUrl || document.image_url || document.bannerUrl || document.banner_url || document.iconUrl || document.icon_url || document.pdf_url || null;
-            const displayImageUrl = imageUrl && !imageUrl.startsWith('http') ? `https://43.205.194.195.in${imageUrl}` : imageUrl?.replace('http://', 'https://');
+            const displayImageUrl = imageUrl && !imageUrl.startsWith('http') ? `http://43.205.194.195:3000${imageUrl}` : imageUrl?.replace('https://test.gangainstitute.in', 'http://43.205.194.195:3000');
             
 
             
