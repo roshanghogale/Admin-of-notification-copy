@@ -26,7 +26,7 @@ const createStudentUpdate = async (req, res) => {
     let notificationPdfUrl = null;
     let selectionPdfUrl = null;
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = `${req.protocol}://${"43.205.194.195"}`;
     
     if (req.files) {
       if (req.files.image) {
