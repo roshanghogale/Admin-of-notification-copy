@@ -17,7 +17,7 @@ import {
   Chip,
   OutlinedInput
 } from "@mui/material";
-import { PhotoCamera } from "@mui/icons-material";
+import { PhotoCamera, VideoLibrary } from "@mui/icons-material";
 import { toast, ToastContainer } from "react-toastify";
 import axios from 'axios';
 import "react-toastify/dist/ReactToastify.css";
@@ -41,13 +41,12 @@ function StoryPage() {
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(false);
 
+  const [mediaType, setMediaType] = useState('image');
+  const [videoFile, setVideoFile] = useState(null);
+
   // File states
   const [iconFile, setIconFile] = useState(null);
   const [bannerFile, setBannerFile] = useState(null);
-
-  // Preview states
-  const [iconPreview, setIconPreview] = useState("");
-  const [bannerPreview, setBannerPreview] = useState("");
 
   // District and Taluka data
   const districts = [
@@ -98,11 +97,11 @@ function StoryPage() {
     "Yavatmal": ["Select Taluka", "Arni", "Babhulgaon", "Darwha", "Digras", "Ghatanji", "Kalamb", "Mahagaon", "Maregaon", "Ner", "Pandharkaoda", "Pusad", "Ralegaon", "Umarkhed", "Wani", "Yavatmal", "Zari-Jamani"]
   };
 
-  const ageGroupOptions = ["१४ ते १८", "१९ ते २५", "२६ ते ३१", "३२ पेक्षा जास्त"];
+  const ageGroupOptions = ["14 to 18", "19 to 25", "26 to 31", "32 and above"];
 
   // Education data from CareerRoadMapPage
   const educationOptions = [
-    "All", "10th", "12th", "Education", "Arts", "Commerce", "Engineering (Degree)", "Diploma (Polytechnic)",
+    "All", "10th", "12th", "Edu (B.ed and D.ed)", "Arts", "Commerce", "Engineering (Degree)", "Diploma (Polytechnic)",
     "Medical", "Dental", "ITI", "Pharmacy", "Agriculture",
     "Computer Science/IT", "Nursing", "Law", "Veterinary",
     "Journalism", "Management", "Hotel Management",
@@ -113,7 +112,7 @@ function StoryPage() {
     "All": ["All"],
     "10th": [],
     "12th": [],
-    "Education": ["B.Ed", "BA B.Ed", "Other"],
+    "Edu (B.ed and D.ed)": ["B.Ed", "BA B.Ed", "Other"],
     "Arts": ["BA", "BA (Hons)", "Home Science", "Social Work", "Journalism", "BA LLB", "Other"],
     "Commerce": ["B.Com", "B.Com (Hons)", "Chartered Accountancy (CA)", "Cost and Management Accountancy (CMA)", "Company Secretary (CS)", "Other"],
     "Engineering (Degree)": ["Computer Science Engineering (CSE)", "Information Technology (IT)", "Artificial Intelligence & Machine Learning (AIML)", "Data Science Engineering", "Cyber Security", "Robotics Engineering", "Software Engineering", "Computer Engineering", "Electronics & Communication (ECE)", "Electrical Engineering (EE)", "Electronics & Telecommunication (ENTC)", "Instrumentation Engineering", "Electrical & Electronics Engineering (EEE)", "Mechanical Engineering (ME)", "Automobile Engineering", "Mechatronics Engineering", "Production Engineering", "Civil Engineering (CE)", "Architecture (B.Arch)", "Structural Engineering (Specialization)", "Chemical Engineering", "Industrial Engineering", "Petroleum Engineering", "Mining Engineering", "Agricultural Engineering", "Food Technology", "Aerospace Engineering", "Aeronautical Engineering", "Marine Engineering", "Naval Architecture", "Environmental Engineering", "Textile Engineering", "Plastic Engineering", "Metallurgical Engineering", "Other"],
@@ -139,7 +138,7 @@ function StoryPage() {
     "All": ["All"],
     "10th": [],
     "12th": [],
-    "Education": ["M.Ed", "None"],
+    "Edu (B.ed and D.ed)": ["M.Ed", "None"],
     "Arts": ["MA", "None"],
     "Commerce": ["M.Com", "MBA", "None"],
     "Engineering (Degree)": ["M.Tech", "M.E", "MBA", "None"],
@@ -187,12 +186,16 @@ function StoryPage() {
       formData.append('selectedDistrict', isMainStory && otherType === 'location' ? (Array.isArray(selectedDistrict) && selectedDistrict.length === districts.filter(d => d !== "Select District").length ? 'All' : JSON.stringify(selectedDistrict)) : '');
       formData.append('selectedTaluka', isMainStory && otherType === 'location' ? (Array.isArray(selectedDistrict) && selectedDistrict.length === districts.filter(d => d !== "Select District").length ? 'All' : JSON.stringify(selectedTaluka)) : '');
       formData.append('notification', notification);
+      formData.append('mediaType', mediaType);
       
       if (iconFile) {
         formData.append('icon', iconFile);
       }
-      if (bannerFile) {
+      if (mediaType === 'image' && bannerFile) {
         formData.append('banner', bannerFile);
+      }
+      if (mediaType === 'video' && videoFile) {
+        formData.append('video', videoFile);
       }
 
       const response = await axios.post('/api/stories', formData, {
@@ -264,8 +267,8 @@ function StoryPage() {
       setAgeGroups([]);
       setIconFile(null);
       setBannerFile(null);
-      setIconPreview("");
-      setBannerPreview("");
+      setVideoFile(null);
+      setMediaType('image');
     } catch (error) {
       console.error("Error:", error);
       toast.error(error.response?.data?.error || "An error occurred", { position: "top-right" });
@@ -278,7 +281,6 @@ function StoryPage() {
     const file = e.target.files[0];
     if (file) {
       setIconFile(file);
-      setIconPreview(URL.createObjectURL(file));
       toast.info("Icon selected successfully!", { position: "top-right" });
     }
   };
@@ -287,8 +289,15 @@ function StoryPage() {
     const file = e.target.files[0];
     if (file) {
       setBannerFile(file);
-      setBannerPreview(URL.createObjectURL(file));
-      toast.info("Banner selected successfully!", { position: "top-right" });
+      toast.info("Banner image selected successfully!", { position: "top-right" });
+    }
+  };
+
+  const handleVideoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setVideoFile(file);
+      toast.info("Video selected successfully!", { position: "top-right" });
     }
   };
 
@@ -411,70 +420,125 @@ function StoryPage() {
                 />
               </Paper>
             </Grid>
-            <Grid item xs={12} md={4}>
-              <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }} className="file-upload-card">
-                <Box>
-                  <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                    Icon
+            <Grid item xs={12} md={3}>
+              <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }} className="file-upload-card">
+                <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
+                  Icon
+                </Typography>
+                <input
+                  type="file"
+                  name="icon"
+                  accept="image/*"
+                  onChange={handleIconChange}
+                  hidden
+                  id="icon-upload"
+                />
+                <label htmlFor="icon-upload">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    startIcon={<PhotoCamera />}
+                    fullWidth
+                    sx={{ mb: 1 }}
+                  >
+                    Select Icon
+                  </Button>
+                </label>
+                {iconFile && (
+                  <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
+                    Selected: {iconFile.name}
                   </Typography>
-                  <input
-                    type="file"
-                    name="icon"
-                    accept="image/*"
-                    onChange={handleIconChange}
-                    hidden
-                    id="icon-upload"
-                  />
-                  <label htmlFor="icon-upload">
-                    <Button
-                      variant="outlined"
-                      component="span"
-                      startIcon={<PhotoCamera />}
-                      fullWidth
-                      sx={{ mb: 1 }}
-                    >
-                      Select Icon
-                    </Button>
-                  </label>
-                </Box>
-                {iconPreview && (
-                  <Box sx={{ mt: 1 }}>
-                    <img src={iconPreview} alt="Icon preview" style={{ width: '100%', maxHeight: '100px', objectFit: 'contain' }} />
-                  </Box>
                 )}
               </Paper>
             </Grid>
-            <Grid item xs={12} md={4}>
-              <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }} className="file-upload-card">
-                <Box>
-                  <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                    Banner
-                  </Typography>
-                  <input
-                    type="file"
-                    name="banner"
-                    accept="image/*"
-                    onChange={handleBannerChange}
-                    hidden
-                    id="banner-upload"
-                  />
-                  <label htmlFor="banner-upload">
+            <Grid item xs={12} md={5}>
+              <Paper elevation={2} sx={{ p: 2, borderRadius: 2, height: '100%' }} className="file-upload-card">
+                <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600} textAlign="center">
+                  Banner Media
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
                     <Button
-                      variant="outlined"
-                      component="span"
-                      startIcon={<PhotoCamera />}
+                      variant={mediaType === 'image' ? 'contained' : 'outlined'}
                       fullWidth
+                      onClick={() => {
+                        setMediaType('image');
+                        setVideoFile(null);
+                      }}
                       sx={{ mb: 1 }}
                     >
-                      Select Banner
+                      Image
                     </Button>
-                  </label>
-                </Box>
-                {bannerPreview && (
-                  <Box sx={{ mt: 1 }}>
-                    <img src={bannerPreview} alt="Banner preview" style={{ width: '100%', maxHeight: '100px', objectFit: 'contain' }} />
-                  </Box>
-                )}
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Button
+                      variant={mediaType === 'video' ? 'contained' : 'outlined'}
+                      fullWidth
+                      onClick={() => {
+                        setMediaType('video');
+                        setBannerFile(null);
+                      }}
+                      sx={{ mb: 1 }}
+                    >
+                      Video
+                    </Button>
+                  </Grid>
+                  <Grid item xs={12}>
+                    {mediaType === 'image' ? (
+                      <>
+                        <input
+                          type="file"
+                          name="banner"
+                          accept="image/*"
+                          onChange={handleBannerChange}
+                          hidden
+                          id="banner-upload"
+                        />
+                        <label htmlFor="banner-upload">
+                          <Button
+                            variant="outlined"
+                            component="span"
+                            startIcon={<PhotoCamera />}
+                            fullWidth
+                          >
+                            Select Image
+                          </Button>
+                        </label>
+                        {bannerFile && (
+                          <Typography variant="body2" color="success.main" sx={{ mt: 1, textAlign: 'center' }}>
+                            Selected: {bannerFile.name}
+                          </Typography>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          type="file"
+                          name="video"
+                          accept="video/*"
+                          onChange={handleVideoChange}
+                          hidden
+                          id="video-upload"
+                        />
+                        <label htmlFor="video-upload">
+                          <Button
+                            variant="outlined"
+                            component="span"
+                            startIcon={<VideoLibrary />}
+                            fullWidth
+                          >
+                            Select Video
+                          </Button>
+                        </label>
+                        {videoFile && (
+                          <Typography variant="body2" color="success.main" sx={{ mt: 1, textAlign: 'center' }}>
+                            Selected: {videoFile.name}
+                          </Typography>
+                        )}
+                      </>
+                    )}
+                  </Grid>
+                </Grid>
               </Paper>
             </Grid>
 

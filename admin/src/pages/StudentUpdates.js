@@ -24,11 +24,12 @@ function StudentUpdates() {
   const [title, setTitle] = useState("");
   const [education, setEducation] = useState("");
   const [ageRestriction, setAgeRestriction] = useState("");
-  const [applicationMethod, setApplicationMethod] = useState("");
+
   const [description2, setDescription2] = useState("");
   const [applicationLink, setApplicationLink] = useState("");
   const [lastDate, setLastDate] = useState("");
   const [imageFile, setImageFile] = useState(null);
+  const [iconFile, setIconFile] = useState(null);
   const [notificationPdfFile, setNotificationPdfFile] = useState(null);
   const [selectionPdfFile, setSelectionPdfFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -48,19 +49,23 @@ function StudentUpdates() {
       formData.append('title', title.trim());
       formData.append('education', education.trim());
       formData.append('ageRestriction', ageRestriction.trim());
-      formData.append('applicationMethod', applicationMethod.trim());
+
       formData.append('description2', description2.trim());
       formData.append('applicationLink', applicationLink.trim());
       formData.append('lastDate', lastDate);
       formData.append('notification', notification);
       
       if (imageFile) formData.append('image', imageFile);
+      if (iconFile) formData.append('icon', iconFile);
       if (notificationPdfFile) formData.append('notificationPdf', notificationPdfFile);
       if (selectionPdfFile) formData.append('selectionPdf', selectionPdfFile);
 
       const response = await fetch('/api/student-updates', {
         method: 'POST',
-        body: formData
+        body: formData,
+        headers: {
+          // Don't set Content-Type for FormData, let browser set it
+        }
       });
 
       if (response.ok) {
@@ -68,11 +73,12 @@ function StudentUpdates() {
         setTitle("");
         setEducation("");
         setAgeRestriction("");
-        setApplicationMethod("");
+
         setDescription2("");
         setApplicationLink("");
         setLastDate("");
         setImageFile(null);
+        setIconFile(null);
         setNotificationPdfFile(null);
         setSelectionPdfFile(null);
         setNotification(false);
@@ -121,7 +127,7 @@ function StudentUpdates() {
             </Grid>
             
             {/* New Structure Fields */}
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Education"
@@ -131,7 +137,7 @@ function StudentUpdates() {
                 placeholder="Education requirement..."
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Age Restriction"
@@ -141,16 +147,7 @@ function StudentUpdates() {
                 placeholder="Age restriction..."
               />
             </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="Application Method"
-                value={applicationMethod}
-                onChange={(e) => setApplicationMethod(e.target.value)}
-                variant="outlined"
-                placeholder="How to apply..."
-              />
-            </Grid>
+
             
             {/* Description and Links */}
             <Grid item xs={12} md={6}>
@@ -192,8 +189,40 @@ function StudentUpdates() {
                 File Uploads
               </Typography>
               <Grid container spacing={3}>
+                {/* Icon Upload */}
+                <Grid item xs={12} md={3}>
+                  <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2 }} className="file-upload-card">
+                    <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
+                      Student Update Icon
+                    </Typography>
+                    <input
+                      type="file"
+                      name="icon"
+                      accept="image/*"
+                      onChange={(e) => setIconFile(e.target.files[0])}
+                      hidden
+                      id="icon-upload"
+                    />
+                    <label htmlFor="icon-upload">
+                      <Button
+                        variant="outlined"
+                        component="span"
+                        startIcon={<PhotoCamera />}
+                        fullWidth
+                        sx={{ mb: 1 }}
+                      >
+                        Select Icon
+                      </Button>
+                    </label>
+                    {iconFile && (
+                      <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
+                        Selected: {iconFile.name}
+                      </Typography>
+                    )}
+                  </Paper>
+                </Grid>
                 {/* Image Upload */}
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={3}>
                   <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2 }} className="file-upload-card">
                     <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
                       Student Update Image
@@ -226,7 +255,7 @@ function StudentUpdates() {
                 </Grid>
 
                 {/* Notification PDF Upload */}
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={3}>
                   <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2 }} className="file-upload-card">
                     <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
                       Notification PDF
@@ -259,7 +288,7 @@ function StudentUpdates() {
                 </Grid>
                 
                 {/* Selection PDF Upload */}
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={3}>
                   <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2 }} className="file-upload-card">
                     <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
                       Selection PDF

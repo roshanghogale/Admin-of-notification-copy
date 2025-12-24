@@ -18,6 +18,7 @@ const upload = multer({ storage: storage });
 
 router.post('/', upload.fields([
   { name: 'image', maxCount: 1 },
+  { name: 'icon', maxCount: 1 },
   { name: 'notificationPdf', maxCount: 1 },
   { name: 'selectionPdf', maxCount: 1 }
 ]), createStudentUpdate);

@@ -93,11 +93,11 @@ function Notification() {
     "Yavatmal": ["Select Taluka", "Arni", "Babhulgaon", "Darwha", "Digras", "Ghatanji", "Kalamb", "Mahagaon", "Maregaon", "Ner", "Pandharkaoda", "Pusad", "Ralegaon", "Umarkhed", "Wani", "Yavatmal", "Zari-Jamani"]
   };
 
-  const ageGroupOptions = ["१४ ते १८", "१९ ते २५", "२६ ते ३१", "३२ पेक्षा जास्त"];
+  const ageGroupOptions = ["14 to 18", "19 to 25", "26 to 31", "32 and above"];
 
   // Education data
   const educationOptions = [
-    "All", "10th", "12th", "Education", "Arts", "Commerce", "Engineering (Degree)", "Diploma (Polytechnic)",
+    "All", "10th", "12th", "Edu (B.ed and D.ed)", "Arts", "Commerce", "Engineering (Degree)", "Diploma (Polytechnic)",
     "Medical", "Dental", "ITI", "Pharmacy", "Agriculture",
     "Computer Science/IT", "Nursing", "Law", "Veterinary",
     "Journalism", "Management", "Hotel Management",
@@ -108,7 +108,7 @@ function Notification() {
     "All": ["All"],
     "10th": [],
     "12th": [],
-    "Education": ["B.Ed", "BA B.Ed", "Other"],
+    "Edu (B.ed and D.ed)": ["B.Ed", "BA B.Ed", "Other"],
     "Arts": ["BA", "BA (Hons)", "Home Science", "Social Work", "Journalism", "BA LLB", "Other"],
     "Commerce": ["B.Com", "B.Com (Hons)", "Chartered Accountancy (CA)", "Cost and Management Accountancy (CMA)", "Company Secretary (CS)", "Other"],
     "Engineering (Degree)": ["Computer Science Engineering (CSE)", "Information Technology (IT)", "Artificial Intelligence & Machine Learning (AIML)", "Data Science Engineering", "Cyber Security", "Robotics Engineering", "Software Engineering", "Computer Engineering", "Electronics & Communication (ECE)", "Electrical Engineering (EE)", "Electronics & Telecommunication (ENTC)", "Instrumentation Engineering", "Electrical & Electronics Engineering (EEE)", "Mechanical Engineering (ME)", "Automobile Engineering", "Mechatronics Engineering", "Production Engineering", "Civil Engineering (CE)", "Architecture (B.Arch)", "Structural Engineering (Specialization)", "Chemical Engineering", "Industrial Engineering", "Petroleum Engineering", "Mining Engineering", "Agricultural Engineering", "Food Technology", "Aerospace Engineering", "Aeronautical Engineering", "Marine Engineering", "Naval Architecture", "Environmental Engineering", "Textile Engineering", "Plastic Engineering", "Metallurgical Engineering", "Other"],
@@ -134,7 +134,7 @@ function Notification() {
     "All": ["All"],
     "10th": [],
     "12th": [],
-    "Education": ["M.Ed", "None"],
+    "Edu (B.ed and D.ed)": ["M.Ed", "None"],
     "Arts": ["MA", "None"],
     "Commerce": ["M.Com", "MBA", "None"],
     "Engineering (Degree)": ["M.Tech", "M.E", "MBA", "None"],

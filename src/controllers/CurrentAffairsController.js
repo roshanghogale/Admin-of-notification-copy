@@ -16,24 +16,67 @@ const createCurrentAffair = async (req, res) => {
   console.log('Files:', req.files);
   
   try {
-    const { title } = req.body;
+    const { title, date } = req.body;
     
     if (!title) {
       return res.status(400).json({ error: 'Title required' });
     }
 
+    let imageUrl = null;
+    let pdfUrl = null;
+
+    const baseUrl = req.get('host').includes('gangainstitute.in') ? 'https://test.gangainstitute.in' : `${req.protocol}://${req.get('host')}`;
+    
+    if (req.files) {
+      if (req.files.image) {
+        imageUrl = `${baseUrl}/uploads/${req.files.image[0].filename}`;
+      }
+      if (req.files.pdf) {
+        pdfUrl = `${baseUrl}/uploads/${req.files.pdf[0].filename}`;
+      }
+    }
+
     console.log('About to insert:', title);
     
     const result = await pool.query(
-      'INSERT INTO current_affairs (title, created_at) VALUES ($1, NOW()) RETURNING *',
-      [title]
+      'INSERT INTO current_affairs (title, date, image_url, pdf_url, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING *',
+      [title, date ? new Date(date) : null, imageUrl, pdfUrl]
     );
 
     console.log('Insert successful:', result.rows[0]);
     
+    const currentAffair = result.rows[0];
+    
+    // Send notification if requested
+    if (req.body.notification === 'true' || req.body.notification === true) {
+      try {
+        const notificationData = {
+          type: 'current_affair',
+          id: currentAffair.id.toString(),
+          title: title.trim(),
+          date: date || null,
+          image_url: imageUrl || '',
+          pdf_url: pdfUrl || '',
+          created_at: currentAffair.created_at
+        };
+        
+        const NotificationService = require('../service/NotificationService');
+        await NotificationService.sendNotificationToTopic(
+          'all',
+          null,
+          null,
+          null,
+          null,
+          notificationData
+        );
+      } catch (notificationError) {
+        console.error('Notification failed:', notificationError);
+      }
+    }
+    
     res.status(201).json({ 
       message: 'Success', 
-      data: result.rows[0] 
+      data: currentAffair 
     });
   } catch (error) {
     console.error('ERROR:', error.message);
@@ -153,6 +196,11 @@ const initializeCurrentAffairsTable = async () => {
       CREATE TABLE IF NOT EXISTS current_affairs (
         id SERIAL PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
+        date DATE,
+        image_url VARCHAR(500),
+        pdf_url VARCHAR(500),
+        scheduled_notification_date DATE,
+        notification_sent BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);

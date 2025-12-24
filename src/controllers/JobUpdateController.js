@@ -64,6 +64,11 @@ const createJobUpdate = async (req, res) => {
     // Handle file uploads and generate full URLs
     const baseUrl = req.get('host').includes('gangainstitute.in') ? 'https://test.gangainstitute.in' : `${req.protocol}://${req.get('host')}`;
     
+    // Check if existing icon URL is provided
+    if (req.body.iconUrl) {
+      iconUrl = req.body.iconUrl;
+    }
+    
     if (req.files) {
       if (req.files.icon) {
         iconUrl = `${baseUrl}/uploads/${req.files.icon[0].filename}`;

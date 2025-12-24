@@ -15,7 +15,7 @@ const pool = new Pool({
 const createResultHallticket = async (req, res) => {
   try {
     const { 
-      title, examName, category, type, examDate, 
+      title, category, type, examDate, 
       educationCategories, bachelorDegrees, mastersDegrees,
       description1, description2, websiteUrls, notification 
     } = req.body;
@@ -71,13 +71,12 @@ const createResultHallticket = async (req, res) => {
     
     const result = await pool.query(`
       INSERT INTO result_hallticket_updates (
-        title, exam_name, category, type, exam_date, education_requirement,
+        title, category, type, exam_date, education_requirement,
         website_urls, description, icon_url, image_url, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()) 
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()) 
       RETURNING *
     `, [
       title.trim(),
-      examName?.trim() || '',
       category?.trim() || '',
       type?.trim() || '',
       parsedExamDate,
@@ -99,7 +98,7 @@ const createResultHallticket = async (req, res) => {
         await NotificationService.sendNotificationToTopic(
           'all',
           title.trim(),
-          `${type === 'result' ? 'Result' : 'Hall Ticket'} update for ${examName || 'exam'}`,
+          `${type === 'result' ? 'Result' : 'Hall Ticket'} update`,
           imageUrl || iconUrl || '',
           resultHallticket.id.toString()
         );

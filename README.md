@@ -22,8 +22,8 @@ A comprehensive admin panel for managing notifications, built with React fronten
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/roshanghogale/Admin-of-notification-copy.git
-cd Admin-of-notification-copy
+git clone https://github.com/roshanghogale/Admin-of-notifications.git
+cd Admin-of-notifications
 ```
 
 2. **Install backend dependencies:**
@@ -108,5 +108,4 @@ The app will be available at `http://localhost:3000`
 2. Create a feature branch
 3. Make your changes
 4. Test thoroughly
-5. Submit a pull request# Admin-of-notifications
-# Admin-of-notifications
+5. Submit a pull request

@@ -13,7 +13,7 @@ const pool = new Pool({
 
 const createStory = async (req, res) => {
   try {
-    const { title, postDocumentId, webUrl, type, otherType, isMainStory, educationCategories, bachelorDegrees, mastersDegrees, selectedDistrict, selectedTaluka } = req.body;
+    const { title, postDocumentId, webUrl, type, otherType, isMainStory, educationCategories, bachelorDegrees, mastersDegrees, selectedDistrict, selectedTaluka, ageGroups, mediaType } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ error: 'Title is required' });
@@ -21,6 +21,8 @@ const createStory = async (req, res) => {
 
     let iconUrl = null;
     let bannerUrl = null;
+    let videoUrl = null;
+    const finalMediaType = mediaType || 'image';
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     
@@ -31,14 +33,19 @@ const createStory = async (req, res) => {
       if (req.files.banner) {
         bannerUrl = `${baseUrl}/uploads/${req.files.banner[0].filename}`;
       }
+      if (req.files.video) {
+        // Video file uploaded, just save URL
+        const videoFilename = req.files.video[0].filename;
+        videoUrl = `${baseUrl}/uploads/${videoFilename}`;
+      }
     }
 
     const result = await pool.query(`
       INSERT INTO stories (
         title, post_document_id, web_url, type, other_type, is_main_story,
-        education_categories, bachelor_degrees, masters_degrees, district, taluka,
-        icon_url, banner_url, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW()) 
+        education_categories, bachelor_degrees, masters_degrees, district, taluka, age_groups,
+        icon_url, banner_url, video_url, media_type, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW()) 
       RETURNING *
     `, [
       title.trim(),
@@ -50,10 +57,13 @@ const createStory = async (req, res) => {
       JSON.stringify(parseJsonField(educationCategories) || []),
       JSON.stringify(parseJsonField(bachelorDegrees) || []),
       JSON.stringify(parseJsonField(mastersDegrees) || []),
-      selectedDistrict?.trim() || '',
-      selectedTaluka?.trim() || '',
+      JSON.stringify(parseJsonField(selectedDistrict) || []),
+      JSON.stringify(parseJsonField(selectedTaluka) || []),
+      JSON.stringify(parseJsonField(ageGroups) || []),
       iconUrl,
-      bannerUrl
+      bannerUrl,
+      videoUrl,
+      finalMediaType
     ]);
 
     const story = result.rows[0];
@@ -65,7 +75,7 @@ const createStory = async (req, res) => {
           'all',
           story.title,
           'New story available',
-          story.icon_url || '',
+          story.banner_url || story.video_url || story.icon_url || '',
           story.id.toString()
         );
       } catch (notificationError) {
@@ -124,6 +134,8 @@ const updateStory = async (req, res) => {
     const existingStory = existingResult.rows[0];
     let iconUrl = req.body.icon_url || existingStory.icon_url;
     let bannerUrl = req.body.banner_url || existingStory.banner_url;
+    let videoUrl = req.body.video_url || existingStory.video_url;
+    const mediaType = req.body.media_type || existingStory.media_type || 'image';
     
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     
@@ -133,6 +145,11 @@ const updateStory = async (req, res) => {
       }
       if (req.files.banner) {
         bannerUrl = `${baseUrl}/uploads/${req.files.banner[0].filename}`;
+      }
+      if (req.files.video) {
+        const videoFilePath = req.files.video[0].path;
+        // Video is already compressed, just save URL
+        videoUrl = `${baseUrl}/uploads/${req.files.video[0].filename}`;
       }
     }
     
@@ -152,9 +169,9 @@ const updateStory = async (req, res) => {
       UPDATE stories SET 
         title = $1, post_document_id = $2, web_url = $3, type = $4, other_type = $5,
         is_main_story = $6, education_categories = $7, bachelor_degrees = $8, 
-        masters_degrees = $9, district = $10, taluka = $11, icon_url = $12, 
-        banner_url = $13, updated_at = NOW()
-      WHERE id = $14 RETURNING *
+        masters_degrees = $9, district = $10, taluka = $11, age_groups = $12, icon_url = $13, 
+        banner_url = $14, video_url = $15, media_type = $16, updated_at = NOW()
+      WHERE id = $17 RETURNING *
     `, [
       req.body.title || existingStory.title,
       req.body.post_document_id || existingStory.post_document_id,
@@ -165,10 +182,13 @@ const updateStory = async (req, res) => {
       parseJsonField(req.body.education_categories, existingStory.education_categories),
       parseJsonField(req.body.bachelor_degrees, existingStory.bachelor_degrees),
       parseJsonField(req.body.masters_degrees, existingStory.masters_degrees),
-      req.body.district || existingStory.district,
-      req.body.taluka || existingStory.taluka,
+      parseJsonField(req.body.district, existingStory.district),
+      parseJsonField(req.body.taluka, existingStory.taluka),
+      parseJsonField(req.body.age_groups, existingStory.age_groups),
       iconUrl,
       bannerUrl,
+      videoUrl,
+      mediaType,
       id
     ]);
     
@@ -196,7 +216,7 @@ const deleteStory = async (req, res) => {
     
     await pool.query('DELETE FROM stories WHERE id = $1', [id]);
     
-    const fileFields = ['icon_url', 'banner_url'];
+    const fileFields = ['icon_url', 'banner_url', 'video_url'];
     fileFields.forEach(field => {
       if (story[field] && story[field].includes('/uploads/')) {
         const fileName = story[field].split('/uploads/')[1];
@@ -230,8 +250,11 @@ const initializeStoriesTable = async () => {
         masters_degrees JSONB,
         district VARCHAR(100),
         taluka VARCHAR(100),
+        age_groups JSONB,
         icon_url VARCHAR(500),
         banner_url VARCHAR(500),
+        video_url VARCHAR(500),
+        media_type VARCHAR(20) DEFAULT 'image',
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       )

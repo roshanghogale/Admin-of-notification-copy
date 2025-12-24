@@ -28,12 +28,18 @@ import {
   OutlinedInput,
   FormControlLabel,
   Checkbox,
-  Paper
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton
 } from "@mui/material";
 import {
   PhotoCamera,
   PictureAsPdf,
-  Description
+  Description,
+  Close
 } from "@mui/icons-material";
 
 // Import your pages
@@ -73,21 +79,44 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [iconFile, setIconFile] = useState(null);
+  const [selectedIconUrl, setSelectedIconUrl] = useState("");
+  const [existingIcons, setExistingIcons] = useState([]);
   const [pdfFile, setPdfFile] = useState(null);
   const [selectionPdf, setSelectionPdf] = useState(null);
   const [syllabusPdf, setSyllabusPdf] = useState(null);
   const [notification, setNotification] = useState(false);
   const [note, setNote] = useState("");
+  const [showIconGrid, setShowIconGrid] = useState(false);
+  const [iconDialogOpen, setIconDialogOpen] = useState(false);
+
+  // Fetch existing icons on component mount
+  React.useEffect(() => {
+    const fetchExistingIcons = async () => {
+      try {
+        const response = await axios.get('/api/job-updates');
+        const icons = response.data.jobUpdates
+          .filter(job => job.icon_url)
+          .map(job => ({ url: job.icon_url, title: job.title }))
+          .filter((icon, index, self) => 
+            index === self.findIndex(i => i.url === icon.url)
+          );
+        setExistingIcons(icons);
+      } catch (error) {
+        console.error('Error fetching existing icons:', error);
+      }
+    };
+    fetchExistingIcons();
+  }, []);
 
   const educationOptions = [
-    "All", "10th", "12th", "Education", "Arts", "Commerce", "Engineering (Degree)", "Diploma (Polytechnic)",
+    "All", "10th", "12th", "Edu (B.ed and D.ed)", "Arts", "Commerce", "Engineering (Degree)", "Diploma (Polytechnic)",
     "Medical", "Dental", "ITI", "Pharmacy", "Agriculture",
     "Computer Science/IT", "Nursing", "Law", "Veterinary",
     "Journalism", "Management", "Hotel Management",
     "Animation & Multimedia", "Other B.Sc", "Other"
   ];
 
-  const ageGroupOptions = ["१४ ते १८", "१९ ते २५", "२६ ते ३१", "३२ पेक्षा जास्त"];
+  const ageGroupOptions = ["14 to 18", "19 to 25", "26 to 31", "32 and above"];
 
   const subTypeOptions = {
     banking: ["Private", "Government"],
@@ -99,7 +128,7 @@ function App() {
     "All": ["All"],
     "10th": [],
     "12th": [],
-    "Education": ["B.Ed", "BA B.Ed", "Other"],
+    "Edu (B.ed and D.ed)": ["B.Ed", "BA B.Ed", "Other"],
     "Arts": ["BA", "BA (Hons)", "Home Science", "Social Work", "Journalism", "BA LLB", "Other"],
     "Commerce": ["B.Com", "B.Com (Hons)", "Chartered Accountancy (CA)", "Cost and Management Accountancy (CMA)", "Company Secretary (CS)", "Other"],
     "Engineering (Degree)": ["Computer Science Engineering (CSE)", "Information Technology (IT)", "Artificial Intelligence & Machine Learning (AIML)", "Data Science Engineering", "Cyber Security", "Robotics Engineering", "Software Engineering", "Computer Engineering", "Electronics & Communication (ECE)", "Electrical Engineering (EE)", "Electronics & Telecommunication (ENTC)", "Instrumentation Engineering", "Electrical & Electronics Engineering (EEE)", "Mechanical Engineering (ME)", "Automobile Engineering", "Mechatronics Engineering", "Production Engineering", "Civil Engineering (CE)", "Architecture (B.Arch)", "Structural Engineering (Specialization)", "Chemical Engineering", "Industrial Engineering", "Petroleum Engineering", "Mining Engineering", "Agricultural Engineering", "Food Technology", "Aerospace Engineering", "Aeronautical Engineering", "Marine Engineering", "Naval Architecture", "Environmental Engineering", "Textile Engineering", "Plastic Engineering", "Metallurgical Engineering", "Other"],
@@ -125,7 +154,7 @@ function App() {
     "All": ["All"],
     "10th": [],
     "12th": [],
-    "Education": ["M.Ed", "None"],
+    "Edu (B.ed and D.ed)": ["M.Ed", "None"],
     "Arts": ["MA", "None"],
     "Commerce": ["M.Com", "MBA", "None"],
     "Engineering (Degree)": ["M.Tech", "M.E", "MBA", "None"],
@@ -163,7 +192,7 @@ function App() {
       { value: applicationLink.trim(), name: "Apply Link" },
       { value: educationRequirement.trim(), name: "Education Requirement" },
       { value: educationCategories.length > 0, name: "Education Category" },
-      { value: iconFile, name: "Job Icon" },
+      { value: iconFile || selectedIconUrl, name: "Job Icon" },
       { value: imageFile, name: "Job Image/Banner" },
       { value: selectionPdf, name: "Selection PDF" }
     ];
@@ -209,6 +238,7 @@ function App() {
       
       // Add files
       if (iconFile) formData.append('icon', iconFile);
+      else if (selectedIconUrl) formData.append('iconUrl', selectedIconUrl);
       if (imageFile) formData.append('image', imageFile);
       if (pdfFile) formData.append('pdf', pdfFile);
       if (selectionPdf) formData.append('selectionPdf', selectionPdf);
@@ -279,6 +309,7 @@ function App() {
       setNote("");
       setImageFile(null);
       setIconFile(null);
+      setSelectedIconUrl("");
       setPdfFile(null);
       setSelectionPdf(null);
       setSyllabusPdf(null);
@@ -342,8 +373,6 @@ function App() {
             { to: "/slider", label: "Slider" },
             { to: "/free-study-material", label: "Free Study Material" },
             { to: "/news", label: "News" },
-            { to: "/top5", label: "D Paper" },
-
             { to: "/notification", label: "Notification" },
             { to: "/manage-all", label: "Manage All" }
           ].map((item) => (
@@ -720,11 +749,33 @@ function App() {
                             <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
                               Job Icon *
                             </Typography>
+                            
+                            {/* Existing Icons Button and Dialog */}
+                            {existingIcons.length > 0 && (
+                              <Box sx={{ mb: 2 }}>
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  onClick={() => setIconDialogOpen(true)}
+                                  fullWidth
+                                  sx={{ mb: 1 }}
+                                >
+                                  Select Existing Icons
+                                </Button>
+                              </Box>
+                            )}
+                            
+                            {/* OR Upload New */}
+                            <Typography variant="caption" sx={{ display: 'block', mb: 1 }}>OR</Typography>
+                            
                             <input
                               type="file"
                               name="icon"
                               accept="image/*"
-                              onChange={handleIconChange}
+                              onChange={(e) => {
+                                handleIconChange(e);
+                                setSelectedIconUrl("");
+                              }}
                               hidden
                               id="icon-upload"
                             />
@@ -735,10 +786,17 @@ function App() {
                                 startIcon={<PhotoCamera />}
                                 fullWidth
                                 color={iconFile ? 'success' : 'primary'}
+                                size="small"
                               >
-                                {iconFile ? `Selected: ${iconFile.name}` : "Select Icon"}
+                                {iconFile ? `Selected: ${iconFile.name}` : "Upload New Icon"}
                               </Button>
                             </label>
+                            
+                            {selectedIconUrl && (
+                              <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
+                                Using existing icon
+                              </Typography>
+                            )}
                           </Paper>
                         </Grid>
 
@@ -908,6 +966,82 @@ function App() {
           <Route path="/details/:id" element={<Details />} />
         </Routes>
       </Container>
+      
+      {/* Icon Selection Dialog */}
+      <Dialog 
+        open={iconDialogOpen} 
+        onClose={() => setIconDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          Select Existing Icon
+          <IconButton onClick={() => setIconDialogOpen(false)}>
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', 
+            gap: 2, 
+            p: 2
+          }}>
+            {existingIcons.map((icon, index) => (
+              <Box
+                key={index}
+                onClick={() => {
+                  setSelectedIconUrl(icon.url);
+                  setIconFile(null);
+                  setIconDialogOpen(false);
+                  toast.success('Icon selected successfully!');
+                }}
+                sx={{
+                  width: 100,
+                  height: 100,
+                  border: selectedIconUrl === icon.url ? '3px solid #1976d2' : '2px solid #ddd',
+                  borderRadius: 2,
+                  cursor: 'pointer',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  transition: 'all 0.3s ease',
+                  '&:hover': { 
+                    borderColor: '#1976d2',
+                    transform: 'scale(1.05)',
+                    boxShadow: '0 8px 16px rgba(25,118,210,0.3)'
+                  }
+                }}
+              >
+                <img 
+                  src={icon.url} 
+                  alt={`Icon ${index + 1}`}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                {selectedIconUrl === icon.url && (
+                  <Box sx={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    bgcolor: 'rgba(25,118,210,0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Typography variant="body2" sx={{ color: 'white', fontWeight: 'bold' }}>
+                      ✓ Selected
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            ))}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIconDialogOpen(false)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
     </Router>
   );
 }

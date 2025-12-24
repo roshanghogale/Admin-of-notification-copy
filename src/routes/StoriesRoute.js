@@ -18,20 +18,21 @@ const storage = multer.diskStorage({
 const upload = multer({ 
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+    fileSize: 50 * 1024 * 1024 // 50MB limit for videos
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error('Only image and video files are allowed'));
     }
   }
 });
 
 router.post('/', upload.fields([
   { name: 'icon', maxCount: 1 },
-  { name: 'banner', maxCount: 1 }
+  { name: 'banner', maxCount: 1 },
+  { name: 'video', maxCount: 1 }
 ]), createStory);
 
 router.get('/', getStories);
@@ -41,7 +42,8 @@ router.put('/:id', (req, res, next) => {
   if (contentType && contentType.includes('multipart/form-data')) {
     upload.fields([
       { name: 'icon', maxCount: 1 },
-      { name: 'banner', maxCount: 1 }
+      { name: 'banner', maxCount: 1 },
+      { name: 'video', maxCount: 1 }
     ])(req, res, next);
   } else {
     next();

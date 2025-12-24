@@ -13,7 +13,7 @@ const pool = new Pool({
 
 const createNews = async (req, res) => {
   try {
-    const { title, type, date, description1, description2 } = req.body;
+    const { title, titleDescription, subTitle, type, date, description1, description2 } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ error: 'Title is required' });
@@ -32,17 +32,21 @@ const createNews = async (req, res) => {
     }
 
     const description = {
+      titleDescription: titleDescription?.trim() || '',
+      subTitle: subTitle?.trim() || '',
       paragraph1: description1?.trim() || '',
       paragraph2: description2?.trim() || ''
     };
 
     const result = await pool.query(`
       INSERT INTO news (
-        title, type, date, description, image_url, created_at
-      ) VALUES ($1, $2, $3, $4, $5, NOW()) 
+        title, title_description, sub_title, type, date, description, image_url, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) 
       RETURNING *
     `, [
       title.trim(),
+      titleDescription?.trim() || '',
+      subTitle?.trim() || '',
       type.trim(),
       date?.trim() || null,
       JSON.stringify(description),
@@ -53,13 +57,27 @@ const createNews = async (req, res) => {
     
     if (req.body.notification === 'true' || req.body.notification === true) {
       try {
+        const notificationData = {
+          type: 'news',
+          id: news.id.toString(),
+          title: news.title,
+          title_description: news.title_description || '',
+          sub_title: news.sub_title || '',
+          news_type: news.type,
+          date: news.date || null,
+          description: news.description,
+          image_url: news.image_url || '',
+          created_at: news.created_at
+        };
+        
         const NotificationService = require('../service/NotificationService');
         await NotificationService.sendNotificationToTopic(
           'all',
-          news.title,
-          description.paragraph1 || 'New news update available',
-          news.image_url || '',
-          news.id.toString()
+          null,
+          null,
+          null,
+          null,
+          notificationData
         );
       } catch (notificationError) {
         console.error('Notification failed:', notificationError);
@@ -136,11 +154,13 @@ const updateNews = async (req, res) => {
     
     const result = await pool.query(`
       UPDATE news SET 
-        title = $1, type = $2, date = $3, description = $4, 
-        image_url = $5, updated_at = NOW()
-      WHERE id = $6 RETURNING *
+        title = $1, title_description = $2, sub_title = $3, type = $4, date = $5, description = $6, 
+        image_url = $7, updated_at = NOW()
+      WHERE id = $8 RETURNING *
     `, [
       req.body.title || existingNews.title,
+      req.body.titleDescription || existingNews.title_description,
+      req.body.subTitle || existingNews.sub_title,
       req.body.type || existingNews.type,
       req.body.date || existingNews.date,
       parseJsonField(req.body.description, existingNews.description),
@@ -193,6 +213,8 @@ const initializeNewsTable = async () => {
       CREATE TABLE IF NOT EXISTS news (
         id SERIAL PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
+        title_description TEXT,
+        sub_title VARCHAR(255),
         type VARCHAR(100) NOT NULL,
         date VARCHAR(50),
         description JSONB,
@@ -202,9 +224,11 @@ const initializeNewsTable = async () => {
       )
     `);
     
-    // Migration to replace web_url with date
+    // Migration to add new columns
     const migrations = [
       'ALTER TABLE news ADD COLUMN IF NOT EXISTS date VARCHAR(50)',
+      'ALTER TABLE news ADD COLUMN IF NOT EXISTS title_description TEXT',
+      'ALTER TABLE news ADD COLUMN IF NOT EXISTS sub_title VARCHAR(255)',
       'ALTER TABLE news DROP COLUMN IF EXISTS web_url'
     ];
     

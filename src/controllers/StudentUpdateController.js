@@ -14,7 +14,7 @@ const pool = new Pool({
 const createStudentUpdate = async (req, res) => {
   try {
     const { 
-      title, education, ageRestriction, applicationMethod, 
+      title, education, ageRestriction, 
       description2, applicationLink, lastDate, notification 
     } = req.body;
 
@@ -23,6 +23,7 @@ const createStudentUpdate = async (req, res) => {
     }
 
     let imageUrl = null;
+    let iconUrl = null;
     let notificationPdfUrl = null;
     let selectionPdfUrl = null;
 
@@ -31,6 +32,9 @@ const createStudentUpdate = async (req, res) => {
     if (req.files) {
       if (req.files.image) {
         imageUrl = `${baseUrl}/uploads/${req.files.image[0].filename}`;
+      }
+      if (req.files.icon) {
+        iconUrl = `${baseUrl}/uploads/${req.files.icon[0].filename}`;
       }
       if (req.files.notificationPdf) {
         notificationPdfUrl = `${baseUrl}/uploads/${req.files.notificationPdf[0].filename}`;
@@ -44,8 +48,8 @@ const createStudentUpdate = async (req, res) => {
 
     const result = await pool.query(`
       INSERT INTO student_updates (
-        title, education, age_restriction, application_method, description, 
-        application_link, last_date, image_url, notification_pdf_url, 
+        title, education, age_restriction, description, 
+        application_link, last_date, image_url, icon_url, notification_pdf_url, 
         selection_pdf_url, created_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()) 
       RETURNING *
@@ -53,11 +57,11 @@ const createStudentUpdate = async (req, res) => {
       title.trim(),
       education?.trim() || '',
       ageRestriction?.trim() || '',
-      applicationMethod?.trim() || '',
       description2?.trim() || '',
       applicationLink?.trim() || '',
       parsedLastDate,
       imageUrl,
+      iconUrl,
       notificationPdfUrl,
       selectionPdfUrl
     ]);
@@ -66,13 +70,30 @@ const createStudentUpdate = async (req, res) => {
     
     if (notification === 'true' || notification === true) {
       try {
+        const notificationData = {
+          type: 'student_update',
+          id: studentUpdate.id.toString(),
+          title: studentUpdate.title,
+          education: studentUpdate.education || '',
+          age_restriction: studentUpdate.age_restriction || '',
+          description: studentUpdate.description || '',
+          application_link: studentUpdate.application_link || '',
+          last_date: studentUpdate.last_date || null,
+          image_url: studentUpdate.image_url || '',
+          icon_url: studentUpdate.icon_url || '',
+          notification_pdf_url: studentUpdate.notification_pdf_url || '',
+          selection_pdf_url: studentUpdate.selection_pdf_url || '',
+          created_at: studentUpdate.created_at
+        };
+        
         const NotificationService = require('../service/NotificationService');
         await NotificationService.sendNotificationToTopic(
           'all',
-          title.trim(),
-          education || 'New student update available',
-          imageUrl || '',
-          studentUpdate.id.toString()
+          null,
+          null,
+          null,
+          null,
+          notificationData
         );
       } catch (notificationError) {
         console.error('Notification failed:', notificationError);
@@ -130,7 +151,7 @@ const deleteStudentUpdate = async (req, res) => {
     
     const studentUpdate = result.rows[0];
     
-    const fileFields = ['image_url', 'notification_pdf_url', 'selection_pdf_url'];
+    const fileFields = ['image_url', 'icon_url', 'notification_pdf_url', 'selection_pdf_url'];
     fileFields.forEach(field => {
       if (studentUpdate[field]) {
         try {
@@ -220,11 +241,11 @@ const initializeStudentUpdatesTable = async () => {
         title VARCHAR(255) NOT NULL,
         education VARCHAR(255),
         age_restriction VARCHAR(255),
-        application_method VARCHAR(255),
         description TEXT,
         application_link TEXT,
         last_date DATE,
         image_url VARCHAR(255),
+        icon_url VARCHAR(255),
         notification_pdf_url VARCHAR(255),
         selection_pdf_url VARCHAR(255),
         created_at TIMESTAMP DEFAULT NOW()

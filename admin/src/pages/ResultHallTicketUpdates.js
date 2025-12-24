@@ -29,7 +29,7 @@ import {
 
 function ResultHallTicketUpdates() {
   const [title, setTitle] = useState("");
-  const [examName, setExamName] = useState("");
+
   const [category, setCategory] = useState("");
   const [type, setType] = useState("");
   const [examDate, setExamDate] = useState(null);
@@ -45,10 +45,10 @@ function ResultHallTicketUpdates() {
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(false);
 
-  const ageGroupOptions = ["१४ ते १८", "१९ ते २५", "२६ ते ३१", "३२ पेक्षा जास्त"];
+  const ageGroupOptions = ["14 to 18", "19 to 25", "26 to 31", "32 and above"];
 
   const educationOptions = [
-    "All", "10th", "12th", "Education", "Arts", "Commerce", "Engineering (Degree)", "Diploma (Polytechnic)",
+    "All", "10th", "12th", "Edu (B.ed and D.ed)", "Arts", "Commerce", "Engineering (Degree)", "Diploma (Polytechnic)",
     "Medical", "Dental", "ITI", "Pharmacy", "Agriculture",
     "Computer Science/IT", "Nursing", "Law", "Veterinary",
     "Journalism", "Management", "Hotel Management",
@@ -61,7 +61,7 @@ function ResultHallTicketUpdates() {
     "All": ["All"],
     "10th": [],
     "12th": [],
-    "Education": ["B.Ed", "BA B.Ed", "Other"],
+    "Edu (B.ed and D.ed)": ["B.Ed", "BA B.Ed", "Other"],
     "Arts": ["BA", "BA (Hons)", "Home Science", "Social Work", "Journalism", "BA LLB", "Other"],
     "Commerce": ["B.Com", "B.Com (Hons)", "Chartered Accountancy (CA)", "Cost and Management Accountancy (CMA)", "Company Secretary (CS)", "Other"],
     "Engineering (Degree)": ["Computer Science Engineering (CSE)", "Information Technology (IT)", "Artificial Intelligence & Machine Learning (AIML)", "Data Science Engineering", "Cyber Security", "Robotics Engineering", "Software Engineering", "Computer Engineering", "Electronics & Communication (ECE)", "Electrical Engineering (EE)", "Electronics & Telecommunication (ENTC)", "Instrumentation Engineering", "Electrical & Electronics Engineering (EEE)", "Mechanical Engineering (ME)", "Automobile Engineering", "Mechatronics Engineering", "Production Engineering", "Civil Engineering (CE)", "Architecture (B.Arch)", "Structural Engineering (Specialization)", "Chemical Engineering", "Industrial Engineering", "Petroleum Engineering", "Mining Engineering", "Agricultural Engineering", "Food Technology", "Aerospace Engineering", "Aeronautical Engineering", "Marine Engineering", "Naval Architecture", "Environmental Engineering", "Textile Engineering", "Plastic Engineering", "Metallurgical Engineering", "Other"],
@@ -87,7 +87,7 @@ function ResultHallTicketUpdates() {
     "All": ["All"],
     "10th": [],
     "12th": [],
-    "Education": ["M.Ed", "None"],
+    "Edu (B.ed and D.ed)": ["M.Ed", "None"],
     "Arts": ["MA", "None"],
     "Commerce": ["M.Com", "MBA", "None"],
     "Engineering (Degree)": ["M.Tech", "M.E", "MBA", "None"],
@@ -121,7 +121,7 @@ function ResultHallTicketUpdates() {
     try {
       const formData = new FormData();
       formData.append('title', title.trim());
-      formData.append('examName', examName.trim());
+
       formData.append('category', category);
       formData.append('type', type);
       formData.append('examDate', examDate);
@@ -160,7 +160,7 @@ function ResultHallTicketUpdates() {
               data: {
                 notificationType: "result_hallticket",
                 title: title,
-                examName: examName,
+  
                 category: category,
                 type: type,
                 examDate: examDate,
@@ -178,7 +178,7 @@ function ResultHallTicketUpdates() {
         }
         toast.success(notification ? "Result/Hall ticket update saved and notification sent!" : "Result/Hall ticket update saved successfully!");
         setTitle("");
-        setExamName("");
+
         setCategory("");
         setType("");
         setExamDate(null);
@@ -232,13 +232,47 @@ function ResultHallTicketUpdates() {
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Exam Name"
-                value={examName}
-                onChange={(e) => setExamName(e.target.value)}
-                variant="outlined"
-              />
+              <FormControl fullWidth>
+                <InputLabel>Age Groups</InputLabel>
+                <Select
+                  multiple
+                  value={ageGroups}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const availableAgeGroups = ageGroupOptions;
+                    
+                    if (value.includes("All")) {
+                      if (ageGroups.length === availableAgeGroups.length) {
+                        setAgeGroups([]);
+                      } else {
+                        setAgeGroups(availableAgeGroups);
+                      }
+                      return;
+                    }
+                    
+                    setAgeGroups(value);
+                  }}
+                  input={<OutlinedInput label="Age Groups" />}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((value) => (
+                        <Chip key={value} label={value} size="small" />
+                      ))}
+                    </Box>
+                  )}
+                >
+                  <MenuItem key="All" value="All">
+                    <Checkbox checked={ageGroups.length === ageGroupOptions.length && ageGroups.length > 0} />
+                    All
+                  </MenuItem>
+                  {ageGroupOptions.map((option) => (
+                    <MenuItem key={option} value={option}>
+                      <Checkbox checked={ageGroups.indexOf(option) > -1} />
+                      {option}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
 
             {/* Category and Type */}
@@ -433,50 +467,7 @@ function ResultHallTicketUpdates() {
               </FormControl>
             </Grid>
 
-            {/* Age Groups */}
-            <Grid item xs={12} md={4}>
-              <FormControl fullWidth>
-                <InputLabel>Age Groups</InputLabel>
-                <Select
-                  multiple
-                  value={ageGroups}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    const availableAgeGroups = ageGroupOptions;
-                    
-                    if (value.includes("All")) {
-                      if (ageGroups.length === availableAgeGroups.length) {
-                        setAgeGroups([]);
-                      } else {
-                        setAgeGroups(availableAgeGroups);
-                      }
-                      return;
-                    }
-                    
-                    setAgeGroups(value);
-                  }}
-                  input={<OutlinedInput label="Age Groups" />}
-                  renderValue={(selected) => (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {selected.map((value) => (
-                        <Chip key={value} label={value} size="small" />
-                      ))}
-                    </Box>
-                  )}
-                >
-                  <MenuItem key="All" value="All">
-                    <Checkbox checked={ageGroups.length === ageGroupOptions.length && ageGroups.length > 0} />
-                    All
-                  </MenuItem>
-                  {ageGroupOptions.map((option) => (
-                    <MenuItem key={option} value={option}>
-                      <Checkbox checked={ageGroups.indexOf(option) > -1} />
-                      {option}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
+
 
             {/* Description Paragraphs */}
             <Grid item xs={12} md={6}>

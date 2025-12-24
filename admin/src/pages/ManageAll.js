@@ -12,7 +12,7 @@ import {
 import {
   ContentCopy, Visibility, Image, PictureAsPdf, VideoFile,
   Link as LinkIcon, DateRange, Person, Category, Delete, Edit,
-  Add, Remove
+  Add, Remove, PlayArrow
 } from "@mui/icons-material";
 import "react-toastify/dist/ReactToastify.css";
 import "../styles/ManageAll.css";
@@ -534,9 +534,9 @@ function ManageAll() {
 
   const getFieldIcon = (key, value) => {
     const keyLower = key.toLowerCase();
+    if (keyLower.includes('video')) return <VideoFile />;
     if (keyLower.includes('image') || keyLower.includes('icon') || keyLower.includes('banner')) return <Image />;
     if (keyLower.includes('pdf')) return <PictureAsPdf />;
-
     if (keyLower.includes('url') || keyLower.includes('link') || keyLower.includes('web')) return <LinkIcon />;
     if (keyLower.includes('date') || keyLower.includes('timestamp') || keyLower.includes('time')) return <DateRange />;
     if (keyLower.includes('category') || keyLower.includes('type')) return <Category />;
@@ -691,9 +691,10 @@ function ManageAll() {
     }
     
     if (typeof value === "string" && value.startsWith("http")) {
+      const isVideo = value.includes('.mp4') || value.includes('.avi') || value.includes('.mov') || value.includes('video');
       return (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <LinkIcon color="primary" fontSize="small" />
+          {isVideo ? <VideoFile color="primary" fontSize="small" /> : <LinkIcon color="primary" fontSize="small" />}
           <Typography 
             component="a" 
             href={value} 
@@ -703,6 +704,9 @@ function ManageAll() {
           >
             {value.length > 50 ? `${value.substring(0, 50)}...` : value}
           </Typography>
+          {isVideo && (
+            <PlayArrow color="primary" fontSize="small" />
+          )}
         </Box>
       );
     }
@@ -802,9 +806,13 @@ function ManageAll() {
         <Grid container spacing={2}>
           {documents.map((document) => {
             const imageUrl = document.imageUrl || document.image_url || document.bannerUrl || document.banner_url || document.iconUrl || document.icon_url || document.pdf_url || null;
-            const displayImageUrl = imageUrl && !imageUrl.startsWith('http') ? `https://admin.mahaalert.cloud/.in${imageUrl}` : imageUrl?.replace('http://', 'https://');
+            const videoUrl = document.videoUrl || document.video_url || null;
+            const mediaType = document.media_type || 'image';
+            const displayImageUrl = imageUrl && !imageUrl.startsWith('http') ? `https://test.gangainstitute.in${imageUrl}` : imageUrl?.replace('http://', 'https://');
+            const displayVideoUrl = videoUrl && !videoUrl.startsWith('http') ? `https://test.gangainstitute.in${videoUrl}` : videoUrl?.replace('http://', 'https://');
             
-
+            const displayMediaUrl = mediaType === 'video' ? displayVideoUrl : displayImageUrl;
+            const hasMedia = displayMediaUrl || displayImageUrl;
             
             return (
               <Grid key={document.id} item xs={12} sm={6} md={4} lg={2.4}>
@@ -817,24 +825,56 @@ function ManageAll() {
                     '&:hover': { transform: 'translateY(-4px)' }
                   }}
                 >
-                  {displayImageUrl ? (
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image={displayImageUrl}
-                      alt="Document image"
-                      sx={{ objectFit: 'cover' }}
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'flex';
-                      }}
-                    />
+                  {hasMedia ? (
+                    mediaType === 'video' && displayVideoUrl ? (
+                      <Box sx={{ position: 'relative', height: 140 }}>
+                        <video
+                          width="100%"
+                          height="140"
+                          style={{ objectFit: 'cover' }}
+                          controls={false}
+                          muted
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.parentElement.nextSibling.style.display = 'flex';
+                          }}
+                        >
+                          <source src={displayVideoUrl} type="video/mp4" />
+                        </video>
+                        <Box sx={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          bgcolor: 'rgba(0,0,0,0.7)',
+                          borderRadius: '50%',
+                          p: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <PlayArrow sx={{ color: 'white', fontSize: '2rem' }} />
+                        </Box>
+                      </Box>
+                    ) : (
+                      <CardMedia
+                        component="img"
+                        height="140"
+                        image={displayImageUrl}
+                        alt="Document image"
+                        sx={{ objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                    )
                   ) : null}
                   <Box
                     sx={{
                       height: 140,
                       background: `linear-gradient(135deg, ${getSelectedTypeInfo()?.color || '#1976d2'}, ${getSelectedTypeInfo()?.color || '#1976d2'}88)`,
-                      display: displayImageUrl ? 'none' : 'flex',
+                      display: hasMedia ? 'none' : 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       color: 'white',
@@ -880,15 +920,93 @@ function ManageAll() {
                         return document.content || 'No description available';
                       })()}
                     </Typography>
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
                       <Tooltip title="Copy ID">
                         <IconButton 
-                          size="small" 
+                          size="medium" 
                           onClick={() => copyToClipboard(document.id.toString(), 'Document ID')}
+                          sx={{
+                            width: 48,
+                            height: 48,
+                            bgcolor: 'primary.main',
+                            color: 'white',
+                            '&:hover': {
+                              bgcolor: 'primary.dark',
+                              transform: 'scale(1.1)',
+                              boxShadow: '0 8px 16px rgba(0,0,0,0.2)'
+                            },
+                            transition: 'all 0.3s ease'
+                          }}
                         >
-                          <ContentCopy fontSize="small" />
+                          <ContentCopy fontSize="medium" />
                         </IconButton>
                       </Tooltip>
+                      {displayImageUrl && (
+                        <Tooltip title="View Image">
+                          <IconButton 
+                            size="medium"
+                            onClick={() => window.open(displayImageUrl, '_blank')}
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              bgcolor: 'success.main',
+                              color: 'white',
+                              '&:hover': {
+                                bgcolor: 'success.dark',
+                                transform: 'scale(1.1)',
+                                boxShadow: '0 8px 16px rgba(0,0,0,0.2)'
+                              },
+                              transition: 'all 0.3s ease'
+                            }}
+                          >
+                            <Image fontSize="medium" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {document.pdf_url && (
+                        <Tooltip title="View PDF">
+                          <IconButton 
+                            size="medium"
+                            onClick={() => window.open(document.pdf_url, '_blank')}
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              bgcolor: 'error.main',
+                              color: 'white',
+                              '&:hover': {
+                                bgcolor: 'error.dark',
+                                transform: 'scale(1.1)',
+                                boxShadow: '0 8px 16px rgba(0,0,0,0.2)'
+                              },
+                              transition: 'all 0.3s ease'
+                            }}
+                          >
+                            <PictureAsPdf fontSize="medium" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {document.application_link && (
+                        <Tooltip title="Open Application Link">
+                          <IconButton 
+                            size="medium"
+                            onClick={() => window.open(document.application_link, '_blank')}
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              bgcolor: 'warning.main',
+                              color: 'white',
+                              '&:hover': {
+                                bgcolor: 'warning.dark',
+                                transform: 'scale(1.1)',
+                                boxShadow: '0 8px 16px rgba(0,0,0,0.2)'
+                              },
+                              transition: 'all 0.3s ease'
+                            }}
+                          >
+                            <LinkIcon fontSize="medium" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </Box>
                   </CardContent>
                   <Box sx={{ p: 2, pt: 0, display: 'flex', gap: 1 }}>
