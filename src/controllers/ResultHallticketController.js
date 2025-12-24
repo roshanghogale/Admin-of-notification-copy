@@ -94,13 +94,29 @@ const createResultHallticket = async (req, res) => {
     
     if (notification === 'true' || notification === true) {
       try {
+        const notificationData = {
+          type: 'result_hallticket_update',
+          id: resultHallticket.id.toString(),
+          title: resultHallticket.title,
+          category: resultHallticket.category || '',
+          update_type: resultHallticket.type || '',
+          exam_date: resultHallticket.exam_date || null,
+          education_requirement: resultHallticket.education_requirement,
+          website_urls: resultHallticket.website_urls,
+          description: resultHallticket.description,
+          icon_url: resultHallticket.icon_url || '',
+          image_url: resultHallticket.image_url || '',
+          created_at: resultHallticket.created_at
+        };
+        
         const NotificationService = require('../service/NotificationService');
         await NotificationService.sendNotificationToTopic(
           'all',
-          title.trim(),
-          `${type === 'result' ? 'Result' : 'Hall Ticket'} update`,
-          imageUrl || iconUrl || '',
-          resultHallticket.id.toString()
+          null,
+          null,
+          null,
+          null,
+          notificationData
         );
       } catch (notificationError) {
         console.error('Notification failed:', notificationError);

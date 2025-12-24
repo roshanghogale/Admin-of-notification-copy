@@ -56,13 +56,24 @@ const createStudyMaterial = async (req, res) => {
     
     if (req.body.notification === 'true' || req.body.notification === true) {
       try {
+        const notificationData = {
+          type: 'study_material',
+          id: studyMaterial.id.toString(),
+          title: studyMaterial.title,
+          material_type: studyMaterial.type,
+          image_url: studyMaterial.image_url || '',
+          pdf_url: studyMaterial.pdf_url || '',
+          created_at: studyMaterial.created_at
+        };
+        
         const NotificationService = require('../service/NotificationService');
         await NotificationService.sendNotificationToTopic(
           'all',
-          studyMaterial.title,
-          `New ${type.toUpperCase()} study material available`,
-          studyMaterial.image_url || '',
-          studyMaterial.id.toString()
+          null,
+          null,
+          null,
+          null,
+          notificationData
         );
       } catch (notificationError) {
         console.error('Notification failed:', notificationError);

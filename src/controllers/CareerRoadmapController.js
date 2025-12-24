@@ -67,28 +67,31 @@ const createCareerRoadmap = async (req, res) => {
       console.log('=== CREATING NOTIFICATION PAYLOAD ===');
       
       try {
-        const notificationPayload = {
-          title: title.trim(),
-          body: `New career roadmap: ${title.trim()}`,
-          imageUrl: imageUrl || '',
-          data: {
-            type: 'career_roadmap',
-            id: careerRoadmap.id.toString(),
-            educationCategories: JSON.stringify(educationCategories || [])
-          }
+        const notificationData = {
+          type: 'career_roadmap',
+          id: careerRoadmap.id.toString(),
+          title: careerRoadmap.title,
+          roadmap_type: careerRoadmap.type || '',
+          education_categories: careerRoadmap.education_categories,
+          bachelor_degrees: careerRoadmap.bachelor_degrees,
+          masters_degrees: careerRoadmap.masters_degrees,
+          image_url: careerRoadmap.image_url || '',
+          pdf_url: careerRoadmap.pdf_url || '',
+          created_at: careerRoadmap.created_at
         };
         
-        console.log('=== NOTIFICATION PAYLOAD CREATED ===');
-        console.log(JSON.stringify(notificationPayload, null, 2));
+        console.log('=== NOTIFICATION DATA CREATED ===');
+        console.log(JSON.stringify(notificationData, null, 2));
         
         console.log('=== SENDING NOTIFICATION ===');
         const NotificationService = require('../service/NotificationService');
         await NotificationService.sendNotificationToTopic(
           'all',
-          notificationPayload.title,
-          notificationPayload.body,
-          notificationPayload.imageUrl,
-          notificationPayload.data.id
+          null,
+          null,
+          null,
+          null,
+          notificationData
         );
         console.log('=== NOTIFICATION SENT SUCCESSFULLY ===');
       } catch (notificationError) {
