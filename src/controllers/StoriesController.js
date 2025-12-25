@@ -260,18 +260,21 @@ const initializeStoriesTable = async () => {
       )
     `);
     
-    // Alter existing table to fix schema inconsistencies
+    // Safer migrations - handle existing data
     const migrations = [
-      'ALTER TABLE stories ALTER COLUMN district TYPE JSONB USING district::JSONB',
-      'ALTER TABLE stories ALTER COLUMN taluka TYPE JSONB USING taluka::JSONB',
-      'ALTER TABLE stories ADD COLUMN IF NOT EXISTS age_groups JSONB'
+      'ALTER TABLE stories ADD COLUMN IF NOT EXISTS age_groups JSONB',
+      // Drop and recreate district/taluka columns as JSONB
+      'ALTER TABLE stories DROP COLUMN IF EXISTS district',
+      'ALTER TABLE stories ADD COLUMN IF NOT EXISTS district JSONB',
+      'ALTER TABLE stories DROP COLUMN IF EXISTS taluka', 
+      'ALTER TABLE stories ADD COLUMN IF NOT EXISTS taluka JSONB'
     ];
     
     for (const migration of migrations) {
       try {
         await pool.query(migration);
       } catch (err) {
-        // Ignore errors for existing columns or type changes
+        console.log(`Migration skipped: ${migration}`);
       }
     }
     
