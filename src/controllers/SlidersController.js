@@ -35,8 +35,8 @@ const createSlider = async (req, res) => {
       INSERT INTO sliders (
         title, post_document_id, web_url, type, page_type, is_specific,
         other_type, education_categories, bachelor_degrees, masters_degrees, 
-        district, taluka, image_url, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW()) 
+        district, taluka, age_groups, image_url, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW()) 
       RETURNING *
     `, [
       title.trim(),
@@ -49,8 +49,9 @@ const createSlider = async (req, res) => {
       JSON.stringify(parseJsonField(educationCategories) || []),
       JSON.stringify(parseJsonField(bachelorDegrees) || []),
       JSON.stringify(parseJsonField(mastersDegrees) || []),
-      selectedDistrict?.trim() || '',
-      selectedTaluka?.trim() || '',
+      JSON.stringify(parseJsonField(selectedDistrict) || []),
+      JSON.stringify(parseJsonField(selectedTaluka) || []),
+      JSON.stringify(parseJsonField(req.body.ageGroups) || []),
       imageUrl
     ]);
 
@@ -196,8 +197,8 @@ const updateSlider = async (req, res) => {
         title = $1, post_document_id = $2, web_url = $3, type = $4, page_type = $5,
         is_specific = $6, other_type = $7, education_categories = $8, 
         bachelor_degrees = $9, masters_degrees = $10, district = $11, 
-        taluka = $12, image_url = $13, updated_at = NOW()
-      WHERE id = $14 RETURNING *
+        taluka = $12, age_groups = $13, image_url = $14, updated_at = NOW()
+      WHERE id = $15 RETURNING *
     `, [
       req.body.title || existingSlider.title,
       req.body.post_document_id || existingSlider.post_document_id,
@@ -209,8 +210,9 @@ const updateSlider = async (req, res) => {
       parseJsonField(req.body.education_categories, existingSlider.education_categories),
       parseJsonField(req.body.bachelor_degrees, existingSlider.bachelor_degrees),
       parseJsonField(req.body.masters_degrees, existingSlider.masters_degrees),
-      req.body.district || existingSlider.district,
-      req.body.taluka || existingSlider.taluka,
+      req.body.district ? JSON.stringify(parseJsonField(req.body.district) || []) : existingSlider.district,
+      req.body.taluka ? JSON.stringify(parseJsonField(req.body.taluka) || []) : existingSlider.taluka,
+      req.body.age_groups ? JSON.stringify(parseJsonField(req.body.age_groups) || []) : existingSlider.age_groups,
       imageUrl,
       id
     ]);
@@ -269,15 +271,31 @@ const initializeSlidersTable = async () => {
         education_categories JSONB,
         bachelor_degrees JSONB,
         masters_degrees JSONB,
-        district VARCHAR(100),
-        taluka VARCHAR(100),
+        district JSONB,
+        taluka JSONB,
+        age_groups JSONB,
         image_url VARCHAR(500),
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
     
-    console.log('Sliders table initialized');
+    // Alter existing table to fix schema inconsistencies
+    const migrations = [
+      'ALTER TABLE sliders ALTER COLUMN district TYPE JSONB USING district::JSONB',
+      'ALTER TABLE sliders ALTER COLUMN taluka TYPE JSONB USING taluka::JSONB',
+      'ALTER TABLE sliders ADD COLUMN IF NOT EXISTS age_groups JSONB'
+    ];
+    
+    for (const migration of migrations) {
+      try {
+        await pool.query(migration);
+      } catch (err) {
+        // Ignore errors for existing columns or type changes
+      }
+    }
+    
+    console.log('Sliders table initialized and schema updated');
   } catch (error) {
     console.error('Error initializing sliders table:', error);
   }

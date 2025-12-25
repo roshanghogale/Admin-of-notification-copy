@@ -23,7 +23,7 @@ const notificationBannerRoute = require("./src/routes/NotificationBannerRoute");
 const notificationFilesRoute = require("./src/routes/NotificationFilesRoute");
 const notificationUploadRoute = require("./src/routes/NotificationUploadRoute");
 const careerRoadmapSlidersRoute = require("./src/routes/CareerRoadmapSlidersRoute");
-const { initializeTable } = require('./src/controllers/UserController');
+const { initializeUserTable } = require('./src/controllers/UserController');
 const { initializeJobUpdateTable } = require('./src/controllers/JobUpdateController');
 const { initializeCurrentAffairsTable } = require('./src/controllers/CurrentAffairsController');
 const { initializeCareerRoadmapsTable } = require('./src/controllers/CareerRoadmapController');
@@ -109,7 +109,7 @@ app.get('*', (req, res) => {
 });
 
 // Initialize database tables (optional - only if DB is available)
-initializeTable().catch(err => {
+initializeUserTable().catch(err => {
   console.log('Users table initialization failed, continuing...');
 });
 initializeJobUpdateTable().catch(err => {

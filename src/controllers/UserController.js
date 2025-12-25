@@ -77,7 +77,7 @@ const createUser = async (req, res) => {
   }
 };
 
-const initializeTable = async () => {
+const initializeUserTable = async () => {
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -99,6 +99,8 @@ const initializeTable = async () => {
         age_group VARCHAR(50),
         education VARCHAR(100),
         twelfth VARCHAR(100),
+        profile_photo_url VARCHAR(255),
+        last_name VARCHAR(100),
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       )
@@ -112,6 +114,8 @@ const initializeTable = async () => {
       'ALTER TABLE users ADD COLUMN IF NOT EXISTS study_banking BOOLEAN DEFAULT FALSE',
       'ALTER TABLE users ADD COLUMN IF NOT EXISTS study_self_improvement BOOLEAN DEFAULT FALSE',
       'ALTER TABLE users ADD COLUMN IF NOT EXISTS twelfth VARCHAR(100)',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo_url VARCHAR(255)',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100)',
       'ALTER TABLE users ALTER COLUMN current_affairs TYPE BOOLEAN USING current_affairs::BOOLEAN',
       'ALTER TABLE users ALTER COLUMN jobs TYPE BOOLEAN USING jobs::BOOLEAN',
       'ALTER TABLE users DROP COLUMN IF EXISTS upsc',
@@ -126,7 +130,7 @@ const initializeTable = async () => {
       }
     }
     
-    console.log('Users table initialized');
+    console.log('Users table initialized and schema updated');
   } catch (error) {
     console.error('Error initializing table:', error);
   }
@@ -184,4 +188,4 @@ const deleteUser = async (req, res) => {
   }
 };
 
-module.exports = { createUser, getUsers, deleteUser, getUserByIdentifier, initializeTable };
+module.exports = { createUser, getUsers, deleteUser, getUserByIdentifier, initializeUserTable };

@@ -16,15 +16,32 @@ const createNotificationFilesTable = async () => {
       education_categories JSONB,
       bachelor_degrees JSONB,
       masters_degrees JSONB,
-      district VARCHAR(100),
-      taluka VARCHAR(100),
+      district JSONB,
+      taluka JSONB,
+      age_groups JSONB,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `;
   
   try {
     await pool.query(createTableQuery);
-    console.log('notification_files table created successfully');
+    
+    // Alter existing table to add missing columns and fix types
+    const migrations = [
+      'ALTER TABLE notification_files ADD COLUMN IF NOT EXISTS age_groups JSONB',
+      'ALTER TABLE notification_files ALTER COLUMN district TYPE JSONB USING district::JSONB',
+      'ALTER TABLE notification_files ALTER COLUMN taluka TYPE JSONB USING taluka::JSONB'
+    ];
+    
+    for (const migration of migrations) {
+      try {
+        await pool.query(migration);
+      } catch (err) {
+        // Ignore errors for existing columns or type changes
+      }
+    }
+    
+    console.log('notification_files table created and schema updated successfully');
   } catch (error) {
     console.error('Error creating notification_files table:', error);
   }
@@ -52,7 +69,8 @@ const createNotificationFile = async (req, res) => {
       bachelorDegrees,
       mastersDegrees,
       district,
-      taluka
+      taluka,
+      ageGroups
     } = req.body;
 
     let imageUrl = null;
@@ -63,8 +81,8 @@ const createNotificationFile = async (req, res) => {
     const insertQuery = `
       INSERT INTO notification_files (
         title, body, image_url, document_id, is_specific, other_type,
-        education_categories, bachelor_degrees, masters_degrees, district, taluka
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        education_categories, bachelor_degrees, masters_degrees, district, taluka, age_groups
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `;
 
@@ -78,8 +96,9 @@ const createNotificationFile = async (req, res) => {
       educationCategories ? JSON.stringify(parseJsonField(educationCategories) || []) : null,
       bachelorDegrees ? JSON.stringify(parseJsonField(bachelorDegrees) || []) : null,
       mastersDegrees ? JSON.stringify(parseJsonField(mastersDegrees) || []) : null,
-      district || null,
-      taluka || null
+      district ? JSON.stringify(parseJsonField(district) || []) : null,
+      taluka ? JSON.stringify(parseJsonField(taluka) || []) : null,
+      ageGroups ? JSON.stringify(parseJsonField(ageGroups) || []) : null
     ];
 
     const result = await pool.query(insertQuery, values);
@@ -103,15 +122,16 @@ const updateNotificationFile = async (req, res) => {
       bachelorDegrees,
       mastersDegrees,
       district,
-      taluka
+      taluka,
+      ageGroups
     } = req.body;
 
     const updateQuery = `
       UPDATE notification_files SET
         title = $1, body = $2, document_id = $3, is_specific = $4, other_type = $5,
         education_categories = $6, bachelor_degrees = $7, masters_degrees = $8,
-        district = $9, taluka = $10
-      WHERE id = $11
+        district = $9, taluka = $10, age_groups = $11
+      WHERE id = $12
       RETURNING *
     `;
 
@@ -124,8 +144,9 @@ const updateNotificationFile = async (req, res) => {
       educationCategories ? JSON.stringify(parseJsonField(educationCategories) || []) : null,
       bachelorDegrees ? JSON.stringify(parseJsonField(bachelorDegrees) || []) : null,
       mastersDegrees ? JSON.stringify(parseJsonField(mastersDegrees) || []) : null,
-      district || null,
-      taluka || null,
+      district ? JSON.stringify(parseJsonField(district) || []) : null,
+      taluka ? JSON.stringify(parseJsonField(taluka) || []) : null,
+      ageGroups ? JSON.stringify(parseJsonField(ageGroups) || []) : null,
       id
     ];
 

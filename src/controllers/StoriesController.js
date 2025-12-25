@@ -248,8 +248,8 @@ const initializeStoriesTable = async () => {
         education_categories JSONB,
         bachelor_degrees JSONB,
         masters_degrees JSONB,
-        district VARCHAR(100),
-        taluka VARCHAR(100),
+        district JSONB,
+        taluka JSONB,
         age_groups JSONB,
         icon_url VARCHAR(500),
         banner_url VARCHAR(500),
@@ -260,7 +260,22 @@ const initializeStoriesTable = async () => {
       )
     `);
     
-    console.log('Stories table initialized');
+    // Alter existing table to fix schema inconsistencies
+    const migrations = [
+      'ALTER TABLE stories ALTER COLUMN district TYPE JSONB USING district::JSONB',
+      'ALTER TABLE stories ALTER COLUMN taluka TYPE JSONB USING taluka::JSONB',
+      'ALTER TABLE stories ADD COLUMN IF NOT EXISTS age_groups JSONB'
+    ];
+    
+    for (const migration of migrations) {
+      try {
+        await pool.query(migration);
+      } catch (err) {
+        // Ignore errors for existing columns or type changes
+      }
+    }
+    
+    console.log('Stories table initialized and schema updated');
   } catch (error) {
     console.error('Error initializing stories table:', error);
   }
