@@ -243,7 +243,7 @@ function SliderPage() {
               timestamp: new Date().toISOString()
             }
           };
-          await axios.post("http://localhost:3000/api/firebase/send-notification", firebaseData);
+          await axios.post("https://admin.mahaalert.cloud/api/firebase/send-notification", firebaseData);
         }
       }
       toast.success("Slider saved successfully!", { position: "top-right" });

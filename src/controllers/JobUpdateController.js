@@ -62,7 +62,7 @@ const createJobUpdate = async (req, res) => {
     let syllabusPdfUrl = null;
 
     // Handle file uploads and generate full URLs
-    const baseUrl = req.get('host').includes('gangainstitute.in') ? 'https://test.gangainstitute.in' : `${req.protocol}://${req.get('host')}`;
+    const baseUrl = req.get('host').includes('mahaalert.cloud') ? 'https://admin.mahaalert.cloud' : `${req.protocol}://${req.get('host')}`;
     
     // Check if existing icon URL is provided
     if (req.body.iconUrl) {

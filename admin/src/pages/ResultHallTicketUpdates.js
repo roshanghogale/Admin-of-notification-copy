@@ -173,7 +173,7 @@ function ResultHallTicketUpdates() {
                 timestamp: new Date().toISOString()
               }
             };
-            await axios.post("http://localhost:3000/api/firebase/send-notification", firebaseData);
+            await axios.post("https://admin.mahaalert.cloud/api/firebase/send-notification", firebaseData);
           }
         }
         toast.success(notification ? "Result/Hall ticket update saved and notification sent!" : "Result/Hall ticket update saved successfully!");

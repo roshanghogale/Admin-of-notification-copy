@@ -808,8 +808,8 @@ function ManageAll() {
             const imageUrl = document.imageUrl || document.image_url || document.bannerUrl || document.banner_url || document.iconUrl || document.icon_url || document.pdf_url || null;
             const videoUrl = document.videoUrl || document.video_url || null;
             const mediaType = document.media_type || 'image';
-            const displayImageUrl = imageUrl && !imageUrl.startsWith('http') ? `https://test.gangainstitute.in${imageUrl}` : imageUrl?.replace('http://', 'https://');
-            const displayVideoUrl = videoUrl && !videoUrl.startsWith('http') ? `https://test.gangainstitute.in${videoUrl}` : videoUrl?.replace('http://', 'https://');
+            const displayImageUrl = imageUrl && !imageUrl.startsWith('http') ? `https://admin.mahaalert.cloud${imageUrl}` : imageUrl?.replace('http://', 'https://');
+            const displayVideoUrl = videoUrl && !videoUrl.startsWith('http') ? `https://admin.mahaalert.cloud${videoUrl}` : videoUrl?.replace('http://', 'https://');
             
             const displayMediaUrl = mediaType === 'video' ? displayVideoUrl : displayImageUrl;
             const hasMedia = displayMediaUrl || displayImageUrl;

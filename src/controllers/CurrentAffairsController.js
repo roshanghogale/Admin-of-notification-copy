@@ -25,7 +25,7 @@ const createCurrentAffair = async (req, res) => {
     let imageUrl = null;
     let pdfUrl = null;
 
-    const baseUrl = req.get('host').includes('gangainstitute.in') ? 'https://test.gangainstitute.in' : `${req.protocol}://${req.get('host')}`;
+    const baseUrl = req.get('host').includes('mahaalert.cloud') ? 'https://admin.mahaalert.cloud' : `${req.protocol}://${req.get('host')}`;
     
     if (req.files) {
       if (req.files.image) {

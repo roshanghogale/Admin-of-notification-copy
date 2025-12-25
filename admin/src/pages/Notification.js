@@ -243,7 +243,7 @@ function Notification() {
           };
 
           await axios.post(
-            "http://localhost:3000/api/firebase/send-notification",
+            "https://admin.mahaalert.cloud/api/firebase/send-notification",
             firebaseData
           );
         }
