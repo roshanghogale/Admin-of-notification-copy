@@ -6,12 +6,6 @@ const PORT = process.env.PORT || 3000;
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const csrf = require('csurf');
-
-// Increase server timeout and payload limits
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use(express.raw({ limit: '50mb' }));
-app.use(cors());
 const firebaseRoute = require("./src/routes/FirebaseRoute");
 const userRoute = require("./src/routes/UserRoute");
 const jobUpdateRoute = require("./src/routes/JobUpdateRoute");
@@ -46,7 +40,8 @@ const { startNotificationScheduler } = require('./src/service/NotificationSchedu
 const { createNotificationFilesTable } = require('./src/controllers/NotificationFilesController');
 const { createCareerRoadmapSlidersTable } = require('./src/controllers/CareerRoadmapSlidersController');
 
-
+app.use(bodyParser.json());
+app.use(cors());
 
 // CSRF Protection (disabled for API endpoints, enable for web forms)
 // app.use(csrf({ cookie: true }));
