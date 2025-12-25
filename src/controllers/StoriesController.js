@@ -13,9 +13,14 @@ const pool = new Pool({
 
 const createStory = async (req, res) => {
   try {
+    console.log('=== CREATE STORY REQUEST ===');
+    console.log('Body:', req.body);
+    console.log('Files:', req.files);
+    
     const { title, postDocumentId, webUrl, type, otherType, isMainStory, educationCategories, bachelorDegrees, mastersDegrees, selectedDistrict, selectedTaluka, ageGroups, mediaType } = req.body;
 
     if (!title || !title.trim()) {
+      console.log('Error: Title is missing');
       return res.status(400).json({ error: 'Title is required' });
     }
 
@@ -25,21 +30,25 @@ const createStory = async (req, res) => {
     const finalMediaType = mediaType || 'image';
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
+    console.log('Base URL:', baseUrl);
     
     if (req.files) {
       if (req.files.icon) {
         iconUrl = `${baseUrl}/uploads/${req.files.icon[0].filename}`;
+        console.log('Icon URL:', iconUrl);
       }
       if (req.files.banner) {
         bannerUrl = `${baseUrl}/uploads/${req.files.banner[0].filename}`;
+        console.log('Banner URL:', bannerUrl);
       }
       if (req.files.video) {
-        // Video file uploaded, just save URL
         const videoFilename = req.files.video[0].filename;
         videoUrl = `${baseUrl}/uploads/${videoFilename}`;
+        console.log('Video URL:', videoUrl);
       }
     }
 
+    console.log('About to insert story into database...');
     const result = await pool.query(`
       INSERT INTO stories (
         title, post_document_id, web_url, type, other_type, is_main_story,
@@ -67,6 +76,7 @@ const createStory = async (req, res) => {
     ]);
 
     const story = result.rows[0];
+    console.log('Story created successfully:', story.id);
     
     if (req.body.notification === 'true' || req.body.notification === true) {
       try {
@@ -78,6 +88,7 @@ const createStory = async (req, res) => {
           story.banner_url || story.video_url || story.icon_url || '',
           story.id.toString()
         );
+        console.log('Notification sent successfully');
       } catch (notificationError) {
         console.error('Notification failed:', notificationError);
       }
@@ -89,7 +100,7 @@ const createStory = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating story:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 };
 
