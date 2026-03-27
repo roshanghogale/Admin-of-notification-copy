@@ -14,7 +14,7 @@ const pool = new Pool({
 const createStudentUpdate = async (req, res) => {
   try {
     const { 
-      title, education, ageRestriction, 
+      title, education, 
       description2, applicationLink, lastDate, notification 
     } = req.body;
 
@@ -24,8 +24,8 @@ const createStudentUpdate = async (req, res) => {
 
     let imageUrl = null;
     let iconUrl = null;
-    let notificationPdfUrl = null;
-    let selectionPdfUrl = null;
+    let notificationPdfUrl = req.body.notificationPdfUrl || null;
+    let selectionPdfUrl = req.body.selectionPdfUrl || null;
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     
@@ -36,27 +36,20 @@ const createStudentUpdate = async (req, res) => {
       if (req.files.icon) {
         iconUrl = `${baseUrl}/uploads/${req.files.icon[0].filename}`;
       }
-      if (req.files.notificationPdf) {
-        notificationPdfUrl = `${baseUrl}/uploads/${req.files.notificationPdf[0].filename}`;
-      }
-      if (req.files.selectionPdf) {
-        selectionPdfUrl = `${baseUrl}/uploads/${req.files.selectionPdf[0].filename}`;
-      }
     }
 
     const parsedLastDate = lastDate && lastDate.trim() && lastDate !== 'null' ? new Date(lastDate) : null;
 
     const result = await pool.query(`
       INSERT INTO student_updates (
-        title, education, age_restriction, description, 
+        title, education, description, 
         application_link, last_date, image_url, icon_url, notification_pdf_url, 
         selection_pdf_url, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()) 
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()) 
       RETURNING *
     `, [
       title.trim(),
       education?.trim() || '',
-      ageRestriction?.trim() || '',
       description2?.trim() || '',
       applicationLink?.trim() || '',
       parsedLastDate,
@@ -75,7 +68,6 @@ const createStudentUpdate = async (req, res) => {
           id: studentUpdate.id.toString(),
           title: studentUpdate.title,
           education: studentUpdate.education || '',
-          age_restriction: studentUpdate.age_restriction || '',
           description: studentUpdate.description || '',
           application_link: studentUpdate.application_link || '',
           last_date: studentUpdate.last_date || null,
@@ -193,9 +185,27 @@ const updateStudentUpdate = async (req, res) => {
       paramCount++;
     }
     
+    if (updateData.education !== undefined) {
+      fields.push(`education = $${paramCount}`);
+      values.push(updateData.education);
+      paramCount++;
+    }
+    
     if (updateData.description !== undefined) {
       fields.push(`description = $${paramCount}`);
-      values.push(JSON.stringify(updateData.description));
+      values.push(updateData.description);
+      paramCount++;
+    }
+    
+    if (updateData.application_link !== undefined) {
+      fields.push(`application_link = $${paramCount}`);
+      values.push(updateData.application_link);
+      paramCount++;
+    }
+    
+    if (updateData.last_date !== undefined) {
+      fields.push(`last_date = $${paramCount}`);
+      values.push(updateData.last_date ? new Date(updateData.last_date) : null);
       paramCount++;
     }
     
@@ -205,9 +215,21 @@ const updateStudentUpdate = async (req, res) => {
       paramCount++;
     }
     
-    if (updateData.pdf_url !== undefined) {
-      fields.push(`pdf_url = $${paramCount}`);
-      values.push(updateData.pdf_url);
+    if (updateData.icon_url !== undefined) {
+      fields.push(`icon_url = $${paramCount}`);
+      values.push(updateData.icon_url);
+      paramCount++;
+    }
+    
+    if (updateData.notification_pdf_url !== undefined) {
+      fields.push(`notification_pdf_url = $${paramCount}`);
+      values.push(updateData.notification_pdf_url);
+      paramCount++;
+    }
+    
+    if (updateData.selection_pdf_url !== undefined) {
+      fields.push(`selection_pdf_url = $${paramCount}`);
+      values.push(updateData.selection_pdf_url);
       paramCount++;
     }
     
@@ -240,7 +262,6 @@ const initializeStudentUpdatesTable = async () => {
         id SERIAL PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
         education VARCHAR(255),
-        age_restriction VARCHAR(255),
         description TEXT,
         application_link TEXT,
         last_date DATE,

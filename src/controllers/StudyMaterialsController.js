@@ -24,16 +24,13 @@ const createStudyMaterial = async (req, res) => {
     }
 
     let imageUrl = null;
-    let pdfUrl = null;
+    let pdfUrl = req.body.pdfUrl || null;
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     
     if (req.files) {
       if (req.files.image) {
         imageUrl = `${baseUrl}/uploads/${req.files.image[0].filename}`;
-      }
-      if (req.files.pdf) {
-        pdfUrl = `${baseUrl}/uploads/${req.files.pdf[0].filename}`;
       }
     }
 
@@ -66,9 +63,17 @@ const createStudyMaterial = async (req, res) => {
           created_at: studyMaterial.created_at
         };
         
+        // Map type to topic
+        const topicMap = {
+          'government': 'governmentfree',
+          'police & defence': 'policefree',
+          'banking': 'bankingfree'
+        };
+        const topic = topicMap[type.toLowerCase()] || 'governmentfree';
+        
         const NotificationService = require('../service/NotificationService');
         await NotificationService.sendNotificationToTopic(
-          'all',
+          topic,
           null,
           null,
           null,

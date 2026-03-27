@@ -14,7 +14,7 @@ const pool = new Pool({
 
 const createSlider = async (req, res) => {
   try {
-    const { title, postDocumentId, webUrl, type, pageType, isSpecific, otherType, educationCategories, bachelorDegrees, mastersDegrees, selectedDistrict, selectedTaluka } = req.body;
+    const { title, postDocumentId, webUrl, type, pageType, isSpecific, otherType, educationCategories, bachelorDegrees, mastersDegrees, selectedDistrict, selectedTaluka, bhartyTypes } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ error: 'Title is required' });
@@ -35,8 +35,8 @@ const createSlider = async (req, res) => {
       INSERT INTO sliders (
         title, post_document_id, web_url, type, page_type, is_specific,
         other_type, education_categories, bachelor_degrees, masters_degrees, 
-        district, taluka, age_groups, image_url, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW()) 
+        district, taluka, age_groups, bharty_types, image_url, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW()) 
       RETURNING *
     `, [
       title.trim(),
@@ -52,6 +52,7 @@ const createSlider = async (req, res) => {
       JSON.stringify(parseJsonField(selectedDistrict) || []),
       JSON.stringify(parseJsonField(selectedTaluka) || []),
       JSON.stringify(parseJsonField(req.body.ageGroups) || []),
+      JSON.stringify(parseJsonField(bhartyTypes) || []),
       imageUrl
     ]);
 
@@ -59,14 +60,101 @@ const createSlider = async (req, res) => {
     
     if (req.body.notification === 'true' || req.body.notification === true) {
       try {
+        const notificationData = {
+          type: 'slider',
+          id: slider.id.toString(),
+          title: slider.title,
+          body: slider.title,
+          post_document_id: slider.post_document_id || '',
+          web_url: slider.web_url || '',
+          slider_type: slider.type || '',
+          page_type: slider.page_type || '',
+          is_specific: String(slider.is_specific || false),
+          other_type: slider.other_type || '',
+          education_categories: JSON.stringify(slider.education_categories || []),
+          bachelor_degrees: JSON.stringify(slider.bachelor_degrees || []),
+          masters_degrees: JSON.stringify(slider.masters_degrees || []),
+          district: JSON.stringify(slider.district || []),
+          taluka: JSON.stringify(slider.taluka || []),
+          age_groups: JSON.stringify(slider.age_groups || []),
+          bharty_types: JSON.stringify(slider.bharty_types || []),
+          image_url: slider.image_url || '',
+          created_at: slider.created_at ? new Date(slider.created_at).toISOString() : ''
+        };
+        
+        let topics = ['all'];
+        
+        if (slider.is_specific) {
+          const sanitizeTopic = (topic) => {
+            return topic
+              .replace(/\s+/g, '')
+              .replace(/\./g, '')
+              .replace(/[()]/g, '')
+              .replace(/&/g, '')
+              .replace(/\//g, '')
+              .replace(/-/g, '')
+              .replace(/[^a-zA-Z0-9]/g, '')
+              .substring(0, 900);
+          };
+          
+          const eduCategories = parseJsonField(educationCategories) || [];
+          const bachelorDegreesList = parseJsonField(bachelorDegrees) || [];
+          const districtList = parseJsonField(selectedDistrict) || [];
+          const talukaList = parseJsonField(selectedTaluka) || [];
+          const ageGroupsList = parseJsonField(req.body.ageGroups) || [];
+          
+          if (otherType === 'education') {
+            if (eduCategories.includes('All')) {
+              topics = ['all'];
+            } else {
+              topics = [];
+              const basicEducation = eduCategories.filter(cat => cat === '10th' || cat === '12th');
+              topics.push(...basicEducation);
+              
+              const otherCategories = eduCategories.filter(cat => cat !== '10th' && cat !== '12th');
+              if (otherCategories.length > 0) {
+                const sanitizedDegrees = bachelorDegreesList.map(sanitizeTopic).filter(t => t);
+                topics.push(...sanitizedDegrees);
+              }
+              
+              if (topics.length === 0) topics = ['all'];
+            }
+          } else if (otherType === 'location') {
+            if (districtList.includes('All') || talukaList.includes('All')) {
+              topics = ['all'];
+            } else {
+              topics = talukaList.length > 0 ? talukaList.map(sanitizeTopic).filter(t => t) : ['all'];
+            }
+          } else if (otherType === 'age group') {
+            if (ageGroupsList.includes('All')) {
+              topics = ['all'];
+            } else {
+              topics = ageGroupsList.length > 0 ? ageGroupsList.map(ag => sanitizeTopic(ag.replace(/ and /g, ''))).filter(t => t) : ['all'];
+            }
+          } else if (otherType === 'bharty types') {
+            const bhartyTypesList = parseJsonField(bhartyTypes) || [];
+            const bhartyTopicMap = {
+              'Government': 'governmentfree',
+              'Police & Defence': 'policefree',
+              'Banking': 'bankingfree'
+            };
+            topics = bhartyTypesList.length > 0 
+              ? bhartyTypesList.map(type => bhartyTopicMap[type] || 'all').filter(t => t)
+              : ['all'];
+          }
+        }
+        
         const NotificationService = require('../service/NotificationService');
-        await NotificationService.sendNotificationToTopic(
-          'all',
-          slider.title,
-          'New slider available',
-          slider.image_url || '',
-          slider.id.toString()
-        );
+        for (const topic of topics) {
+          await NotificationService.sendNotificationToTopic(
+            topic,
+            null,
+            null,
+            null,
+            null,
+            notificationData
+          );
+        }
       } catch (notificationError) {
         console.error('Notification failed:', notificationError);
       }
@@ -197,8 +285,8 @@ const updateSlider = async (req, res) => {
         title = $1, post_document_id = $2, web_url = $3, type = $4, page_type = $5,
         is_specific = $6, other_type = $7, education_categories = $8, 
         bachelor_degrees = $9, masters_degrees = $10, district = $11, 
-        taluka = $12, age_groups = $13, image_url = $14, updated_at = NOW()
-      WHERE id = $15 RETURNING *
+        taluka = $12, age_groups = $13, bharty_types = $14, image_url = $15, updated_at = NOW()
+      WHERE id = $16 RETURNING *
     `, [
       req.body.title || existingSlider.title,
       req.body.post_document_id || existingSlider.post_document_id,
@@ -213,6 +301,7 @@ const updateSlider = async (req, res) => {
       req.body.district ? JSON.stringify(parseJsonField(req.body.district) || []) : existingSlider.district,
       req.body.taluka ? JSON.stringify(parseJsonField(req.body.taluka) || []) : existingSlider.taluka,
       req.body.age_groups ? JSON.stringify(parseJsonField(req.body.age_groups) || []) : existingSlider.age_groups,
+      req.body.bharty_types ? JSON.stringify(parseJsonField(req.body.bharty_types) || []) : existingSlider.bharty_types,
       imageUrl,
       id
     ]);
@@ -274,6 +363,7 @@ const initializeSlidersTable = async () => {
         district JSONB,
         taluka JSONB,
         age_groups JSONB,
+        bharty_types JSONB,
         image_url VARCHAR(500),
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
@@ -283,10 +373,7 @@ const initializeSlidersTable = async () => {
     // Safer migrations - handle existing data
     const migrations = [
       'ALTER TABLE sliders ADD COLUMN IF NOT EXISTS age_groups JSONB',
-      'ALTER TABLE sliders DROP COLUMN IF EXISTS district',
-      'ALTER TABLE sliders ADD COLUMN IF NOT EXISTS district JSONB',
-      'ALTER TABLE sliders DROP COLUMN IF EXISTS taluka',
-      'ALTER TABLE sliders ADD COLUMN IF NOT EXISTS taluka JSONB'
+      'ALTER TABLE sliders ADD COLUMN IF NOT EXISTS bharty_types JSONB'
     ];
     
     for (const migration of migrations) {

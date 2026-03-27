@@ -55,19 +55,14 @@ const createJobUpdate = async (req, res) => {
       return res.status(400).json({ error: 'Title is required' });
     }
 
-    let iconUrl = null;
-    let imageUrl = null;
-    let pdfUrl = null;
-    let selectionPdfUrl = null;
-    let syllabusPdfUrl = null;
+    let iconUrl = req.body.iconUrl || null;
+    let imageUrl = req.body.imageUrl || null;
+    let pdfUrl = req.body.pdfUrl || null;
+    let selectionPdfUrl = req.body.selectionPdfUrl || null;
+    let syllabusPdfUrl = req.body.syllabusPdfUrl || null;
 
     // Handle file uploads and generate full URLs
     const baseUrl = req.get('host').includes('mahaalert.cloud') ? 'https://admin.mahaalert.cloud' : `${req.protocol}://${req.get('host')}`;
-    
-    // Check if existing icon URL is provided
-    if (req.body.iconUrl) {
-      iconUrl = req.body.iconUrl;
-    }
     
     if (req.files) {
       if (req.files.icon) {
@@ -127,14 +122,13 @@ const createJobUpdate = async (req, res) => {
 
     const jobUpdate = result.rows[0];
     
-    console.log('=== JOB UPDATE SAVED TO DATABASE ===');
-    console.log('Job ID:', jobUpdate.id);
-    console.log('Notification flag:', req.body.notification);
+    console.log('=== CHECKING NOTIFICATION FLAG ===');
+    console.log('Notification value:', req.body.notification);
+    console.log('Notification type:', typeof req.body.notification);
     
     // Send notification if requested
     if (req.body.notification === 'true' || req.body.notification === true) {
-      console.log('=== CREATING NOTIFICATION PAYLOAD ===');
-      
+      console.log('=== NOTIFICATION CONDITION MET - SENDING NOTIFICATION ===');
       try {
         const notificationData = {
           type: 'job_update',
@@ -162,26 +156,65 @@ const createJobUpdate = async (req, res) => {
           syllabus_pdf_url: syllabusPdfUrl || ''
         };
         
-        console.log('=== NOTIFICATION DATA CREATED ===');
-        console.log(JSON.stringify(notificationData, null, 2));
+        // Determine topics based on education categories
+        const eduCategories = parseJsonField(educationCategories) || [];
+        const bachelorDegreesList = parseJsonField(bachelorDegrees) || [];
+        let topics = [];
         
-        console.log('=== SENDING NOTIFICATION ===');
+        console.log('Education categories:', eduCategories);
+        
+        // Sanitize topic name for FCM (match Android app format)
+        const sanitizeTopic = (topic) => {
+          return topic
+            .replace(/\s+/g, '')
+            .replace(/\./g, '')
+            .replace(/[()]/g, '')
+            .replace(/&/g, '')
+            .replace(/\//g, '')
+            .replace(/-/g, '')
+            .replace(/[^a-zA-Z0-9]/g, '')
+            .substring(0, 900);
+        };
+        
+        if (eduCategories.includes('All')) {
+          topics = ['all'];
+        } else {
+          // Add 10th and 12th if selected
+          const basicEducation = eduCategories.filter(cat => cat === '10th' || cat === '12th');
+          topics.push(...basicEducation);
+          
+          // Add sanitized bachelor degrees for other categories
+          const otherCategories = eduCategories.filter(cat => cat !== '10th' && cat !== '12th');
+          if (otherCategories.length > 0) {
+            const sanitizedDegrees = bachelorDegreesList.map(sanitizeTopic).filter(t => t);
+            topics.push(...sanitizedDegrees);
+          }
+          
+          if (topics.length === 0) topics = ['all'];
+        }
+        
+        console.log('=== SENDING NOTIFICATIONS TO TOPICS ===');
+        console.log('Topics:', topics);
+        
         const NotificationService = require('../service/NotificationService');
-        await NotificationService.sendNotificationToTopic(
-          'all',
-          null,
-          null,
-          null,
-          null,
-          notificationData
-        );
-        console.log('=== NOTIFICATION SENT SUCCESSFULLY ===');
+        for (const topic of topics) {
+          console.log(`Sending notification to topic: ${topic}`);
+          await NotificationService.sendNotificationToTopic(
+            topic,
+            null,
+            null,
+            null,
+            null,
+            notificationData
+          );
+          console.log(`Notification sent successfully to topic: ${topic}`);
+        }
+        console.log('=== ALL NOTIFICATIONS SENT ===');
       } catch (notificationError) {
-        console.error('=== NOTIFICATION FAILED ===');
-        console.error('Error:', notificationError);
+        console.error('Notification failed:', notificationError);
       }
     } else {
-      console.log('=== NO NOTIFICATION REQUESTED ===');
+      console.log('=== NOTIFICATION NOT REQUESTED ===');
     }
     
     res.status(201).json({ 

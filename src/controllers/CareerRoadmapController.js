@@ -24,7 +24,7 @@ const createCareerRoadmap = async (req, res) => {
     }
 
     let imageUrl = null;
-    let pdfUrl = null;
+    let pdfUrl = req.body.pdfUrl || null;
 
     // Handle file uploads and generate full URLs
     const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -32,9 +32,6 @@ const createCareerRoadmap = async (req, res) => {
     if (req.files) {
       if (req.files.image) {
         imageUrl = `${baseUrl}/uploads/${req.files.image[0].filename}`;
-      }
-      if (req.files.pdf) {
-        pdfUrl = `${baseUrl}/uploads/${req.files.pdf[0].filename}`;
       }
     }
     
@@ -58,48 +55,74 @@ const createCareerRoadmap = async (req, res) => {
 
     const careerRoadmap = result.rows[0];
     
-    console.log('=== CAREER ROADMAP SAVED TO DATABASE ===');
-    console.log('ID:', careerRoadmap.id);
-    console.log('Notification flag:', notification);
-    
     // Send notification if requested
     if (notification === 'true' || notification === true) {
-      console.log('=== CREATING NOTIFICATION PAYLOAD ===');
-      
       try {
         const notificationData = {
           type: 'career_roadmap',
           id: careerRoadmap.id.toString(),
           title: careerRoadmap.title,
+          body: careerRoadmap.title,
           roadmap_type: careerRoadmap.type || '',
-          education_categories: careerRoadmap.education_categories,
-          bachelor_degrees: careerRoadmap.bachelor_degrees,
-          masters_degrees: careerRoadmap.masters_degrees,
+          education_categories: JSON.stringify(careerRoadmap.education_categories || []),
+          bachelor_degrees: JSON.stringify(careerRoadmap.bachelor_degrees || []),
+          masters_degrees: JSON.stringify(careerRoadmap.masters_degrees || []),
           image_url: careerRoadmap.image_url || '',
           pdf_url: careerRoadmap.pdf_url || '',
           created_at: careerRoadmap.created_at
         };
         
-        console.log('=== NOTIFICATION DATA CREATED ===');
-        console.log(JSON.stringify(notificationData, null, 2));
+        // Determine topics based on type
+        const eduCategories = parseJsonField(educationCategories) || [];
+        const bachelorDegreesList = parseJsonField(bachelorDegrees) || [];
+        let topics = [];
         
-        console.log('=== SENDING NOTIFICATION ===');
+        // Sanitize topic name for FCM (match Android app format)
+        const sanitizeTopic = (topic) => {
+          return topic
+            .replace(/\s+/g, '')
+            .replace(/\./g, '')
+            .replace(/[()]/g, '')
+            .replace(/&/g, '')
+            .replace(/\//g, '')
+            .replace(/-/g, '')
+            .replace(/[^a-zA-Z0-9]/g, '')
+            .substring(0, 900);
+        };
+        
+        if (type === 'startup') {
+          topics = ['all'];
+        } else if (eduCategories.includes('All')) {
+          topics = ['all'];
+        } else {
+          // Add 10th and 12th if selected
+          const basicEducation = eduCategories.filter(cat => cat === '10th' || cat === '12th');
+          topics.push(...basicEducation);
+          
+          // Add sanitized bachelor degrees for other categories
+          const otherCategories = eduCategories.filter(cat => cat !== '10th' && cat !== '12th');
+          if (otherCategories.length > 0) {
+            const sanitizedDegrees = bachelorDegreesList.map(sanitizeTopic).filter(t => t);
+            topics.push(...sanitizedDegrees);
+          }
+          
+          if (topics.length === 0) topics = ['all'];
+        }
+        
         const NotificationService = require('../service/NotificationService');
-        await NotificationService.sendNotificationToTopic(
-          'all',
-          null,
-          null,
-          null,
-          null,
-          notificationData
-        );
-        console.log('=== NOTIFICATION SENT SUCCESSFULLY ===');
+        for (const topic of topics) {
+          await NotificationService.sendNotificationToTopic(
+            topic,
+            null,
+            null,
+            null,
+            null,
+            notificationData
+          );
+        }
       } catch (notificationError) {
-        console.error('=== NOTIFICATION FAILED ===');
-        console.error('Error:', notificationError);
+        console.error('Notification failed:', notificationError);
       }
-    } else {
-      console.log('=== NO NOTIFICATION REQUESTED ===');
     }
     
     res.status(201).json({ 

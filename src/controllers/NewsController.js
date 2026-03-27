@@ -13,7 +13,7 @@ const pool = new Pool({
 
 const createNews = async (req, res) => {
   try {
-    const { title, titleDescription, subTitle, type, date, description1, description2 } = req.body;
+    const { title, titleDescription, subTitle, type, date, description1, description2, isSpecific, otherType, educationCategories, bachelorDegrees, mastersDegrees, selectedDistrict, selectedTaluka, ageGroups } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ error: 'Title is required' });
@@ -61,24 +61,78 @@ const createNews = async (req, res) => {
           type: 'news',
           id: news.id.toString(),
           title: news.title,
+          body: news.title_description || news.title,
           title_description: news.title_description || '',
           sub_title: news.sub_title || '',
           news_type: news.type,
           date: news.date || null,
-          description: news.description,
+          description: typeof news.description === 'string' ? news.description : JSON.stringify(news.description),
           image_url: news.image_url || '',
           created_at: news.created_at
         };
         
+        let topics = ['news'];
+        
+        if (isSpecific === 'true' || isSpecific === true) {
+          const sanitizeTopic = (topic) => {
+            return topic
+              .replace(/\s+/g, '')
+              .replace(/\./g, '')
+              .replace(/[()]/g, '')
+              .replace(/&/g, '')
+              .replace(/\//g, '')
+              .replace(/-/g, '')
+              .replace(/[^a-zA-Z0-9]/g, '')
+              .substring(0, 900);
+          };
+          
+          const eduCategories = parseJsonField(educationCategories) || [];
+          const bachelorDegreesList = parseJsonField(bachelorDegrees) || [];
+          const talukaList = parseJsonField(selectedTaluka) || [];
+          const ageGroupsList = parseJsonField(ageGroups) || [];
+          
+          if (otherType === 'education') {
+            if (eduCategories.includes('All')) {
+              topics = ['all'];
+            } else {
+              topics = [];
+              const basicEducation = eduCategories.filter(cat => cat === '10th' || cat === '12th');
+              topics.push(...basicEducation);
+              
+              const otherCategories = eduCategories.filter(cat => cat !== '10th' && cat !== '12th');
+              if (otherCategories.length > 0) {
+                const sanitizedDegrees = bachelorDegreesList.map(sanitizeTopic).filter(t => t);
+                topics.push(...sanitizedDegrees);
+              }
+              
+              if (topics.length === 0) topics = ['news'];
+            }
+          } else if (otherType === 'location') {
+            if (talukaList.includes('All')) {
+              topics = ['all'];
+            } else {
+              topics = talukaList.length > 0 ? talukaList.map(sanitizeTopic).filter(t => t) : ['news'];
+            }
+          } else if (otherType === 'age group') {
+            if (ageGroupsList.includes('All')) {
+              topics = ['all'];
+            } else {
+              topics = ageGroupsList.length > 0 ? ageGroupsList.map(ag => sanitizeTopic(ag.replace(/ and /g, ''))).filter(t => t) : ['news'];
+            }
+          }
+        }
+        
         const NotificationService = require('../service/NotificationService');
-        await NotificationService.sendNotificationToTopic(
-          'all',
-          null,
-          null,
-          null,
-          null,
-          notificationData
-        );
+        for (const topic of topics) {
+          await NotificationService.sendNotificationToTopic(
+            topic,
+            null,
+            null,
+            null,
+            null,
+            notificationData
+          );
+        }
       } catch (notificationError) {
         console.error('Notification failed:', notificationError);
       }

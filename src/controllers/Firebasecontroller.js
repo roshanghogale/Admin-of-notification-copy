@@ -2,8 +2,23 @@ const NotificationService = require("../service/NotificationService");
 
 const sendGenericNotification = async (req, res) => {
   try {
-    const { title, body, topic, imageUrl, documentId } = req.body;
+    const { title, body, topic, imageUrl, documentId, data } = req.body;
     
+    // Handle data-only format (new format)
+    if (data && topic) {
+      console.log("Data-only notification:", { topic, data });
+      await NotificationService.sendNotificationToTopic(
+        topic,
+        null,
+        null,
+        null,
+        null,
+        data
+      );
+      return res.status(200).json({ message: "Notification sent successfully", success: true });
+    }
+    
+    // Handle legacy format
     if (!title || !body || !topic) {
       return res.status(400).json({ message: "Title, body, and topic are required", success: false });
     }
@@ -20,7 +35,7 @@ const sendGenericNotification = async (req, res) => {
     res.status(200).json({ message: "Notification sent successfully", success: true });
   } catch (error) {
     console.error("Error sending notification:", error);
-    res.status(500).json({ message: "Error sending notification", success: false });
+    res.status(500).json({ message: "Error sending notification", success: false, error: error.message });
   }
 };
 

@@ -13,7 +13,7 @@ const pool = new Pool({
 
 const createStory = async (req, res) => {
   try {
-    const { title, postDocumentId, webUrl, type, otherType, isMainStory, educationCategories, bachelorDegrees, mastersDegrees, selectedDistrict, selectedTaluka, ageGroups, mediaType } = req.body;
+    const { title, postDocumentId, webUrl, type, otherType, isMainStory, educationCategories, bachelorDegrees, mastersDegrees, selectedDistrict, selectedTaluka, ageGroups, bhartyTypes, mediaType, notificationDescription } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ error: 'Title is required' });
@@ -43,9 +43,9 @@ const createStory = async (req, res) => {
     const result = await pool.query(`
       INSERT INTO stories (
         title, post_document_id, web_url, type, other_type, is_main_story,
-        education_categories, bachelor_degrees, masters_degrees, district, taluka, age_groups,
+        education_categories, bachelor_degrees, masters_degrees, district, taluka, age_groups, bharty_types,
         icon_url, banner_url, video_url, media_type, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW()) 
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW()) 
       RETURNING *
     `, [
       title.trim(),
@@ -60,6 +60,7 @@ const createStory = async (req, res) => {
       JSON.stringify(parseJsonField(selectedDistrict) || []),
       JSON.stringify(parseJsonField(selectedTaluka) || []),
       JSON.stringify(parseJsonField(ageGroups) || []),
+      JSON.stringify(parseJsonField(bhartyTypes) || []),
       iconUrl,
       bannerUrl,
       videoUrl,
@@ -70,14 +71,104 @@ const createStory = async (req, res) => {
     
     if (req.body.notification === 'true' || req.body.notification === true) {
       try {
+        const notificationData = {
+          type: 'story',
+          id: story.id.toString(),
+          title: story.title,
+          body: notificationDescription?.trim() || story.title,
+          description: notificationDescription?.trim() || '',
+          post_document_id: story.post_document_id || '',
+          web_url: story.web_url || '',
+          story_type: story.type || '',
+          other_type: story.other_type || '',
+          is_main_story: String(story.is_main_story || false),
+          education_categories: JSON.stringify(story.education_categories || []),
+          bachelor_degrees: JSON.stringify(story.bachelor_degrees || []),
+          masters_degrees: JSON.stringify(story.masters_degrees || []),
+          district: JSON.stringify(story.district || []),
+          taluka: JSON.stringify(story.taluka || []),
+          age_groups: JSON.stringify(story.age_groups || []),
+          bharty_types: JSON.stringify(story.bharty_types || []),
+          icon_url: story.icon_url || '',
+          banner_url: story.banner_url || '',
+          video_url: story.video_url || '',
+          media_type: story.media_type || 'image',
+          created_at: story.created_at
+        };
+        
+        let topics = ['all'];
+        
+        if (story.is_main_story) {
+          const sanitizeTopic = (topic) => {
+            return topic
+              .replace(/\s+/g, '')
+              .replace(/\./g, '')
+              .replace(/[()]/g, '')
+              .replace(/&/g, '')
+              .replace(/\//g, '')
+              .replace(/-/g, '')
+              .replace(/[^a-zA-Z0-9]/g, '')
+              .substring(0, 900);
+          };
+          
+          const eduCategories = parseJsonField(educationCategories) || [];
+          const bachelorDegreesList = parseJsonField(bachelorDegrees) || [];
+          const districtList = parseJsonField(selectedDistrict) || [];
+          const talukaList = parseJsonField(selectedTaluka) || [];
+          const ageGroupsList = parseJsonField(ageGroups) || [];
+          
+          if (otherType === 'education') {
+            if (eduCategories.includes('All')) {
+              topics = ['all'];
+            } else {
+              topics = [];
+              const basicEducation = eduCategories.filter(cat => cat === '10th' || cat === '12th');
+              topics.push(...basicEducation);
+              
+              const otherCategories = eduCategories.filter(cat => cat !== '10th' && cat !== '12th');
+              if (otherCategories.length > 0) {
+                const sanitizedDegrees = bachelorDegreesList.map(sanitizeTopic).filter(t => t);
+                topics.push(...sanitizedDegrees);
+              }
+              
+              if (topics.length === 0) topics = ['all'];
+            }
+          } else if (otherType === 'location') {
+            if (districtList.includes('All') || talukaList.includes('All')) {
+              topics = ['all'];
+            } else {
+              topics = talukaList.length > 0 ? talukaList.map(sanitizeTopic).filter(t => t) : ['all'];
+            }
+          } else if (otherType === 'age group') {
+            if (ageGroupsList.includes('All')) {
+              topics = ['all'];
+            } else {
+              topics = ageGroupsList.length > 0 ? ageGroupsList.map(ag => sanitizeTopic(ag.replace(/ and /g, ''))).filter(t => t) : ['all'];
+            }
+          } else if (otherType === 'bharty types') {
+            const bhartyTypesList = parseJsonField(bhartyTypes) || [];
+            const bhartyTopicMap = {
+              'Government': 'governmentfree',
+              'Police & Defence': 'policefree',
+              'Banking': 'bankingfree'
+            };
+            topics = bhartyTypesList.length > 0 
+              ? bhartyTypesList.map(type => bhartyTopicMap[type] || 'all').filter(t => t)
+              : ['all'];
+          }
+        }
+        
         const NotificationService = require('../service/NotificationService');
-        await NotificationService.sendNotificationToTopic(
-          'all',
-          story.title,
-          'New story available',
-          story.banner_url || story.video_url || story.icon_url || '',
-          story.id.toString()
-        );
+        for (const topic of topics) {
+          await NotificationService.sendNotificationToTopic(
+            topic,
+            null,
+            null,
+            null,
+            null,
+            notificationData
+          );
+        }
       } catch (notificationError) {
         console.error('Notification failed:', notificationError);
       }
@@ -169,9 +260,9 @@ const updateStory = async (req, res) => {
       UPDATE stories SET 
         title = $1, post_document_id = $2, web_url = $3, type = $4, other_type = $5,
         is_main_story = $6, education_categories = $7, bachelor_degrees = $8, 
-        masters_degrees = $9, district = $10, taluka = $11, age_groups = $12, icon_url = $13, 
-        banner_url = $14, video_url = $15, media_type = $16, updated_at = NOW()
-      WHERE id = $17 RETURNING *
+        masters_degrees = $9, district = $10, taluka = $11, age_groups = $12, bharty_types = $13, icon_url = $14, 
+        banner_url = $15, video_url = $16, media_type = $17, updated_at = NOW()
+      WHERE id = $18 RETURNING *
     `, [
       req.body.title || existingStory.title,
       req.body.post_document_id || existingStory.post_document_id,
@@ -185,6 +276,7 @@ const updateStory = async (req, res) => {
       parseJsonField(req.body.district, existingStory.district),
       parseJsonField(req.body.taluka, existingStory.taluka),
       parseJsonField(req.body.age_groups, existingStory.age_groups),
+      parseJsonField(req.body.bharty_types, existingStory.bharty_types),
       iconUrl,
       bannerUrl,
       videoUrl,
@@ -251,6 +343,7 @@ const initializeStoriesTable = async () => {
         district JSONB,
         taluka JSONB,
         age_groups JSONB,
+        bharty_types JSONB,
         icon_url VARCHAR(500),
         banner_url VARCHAR(500),
         video_url VARCHAR(500),
@@ -263,11 +356,7 @@ const initializeStoriesTable = async () => {
     // Safer migrations - handle existing data
     const migrations = [
       'ALTER TABLE stories ADD COLUMN IF NOT EXISTS age_groups JSONB',
-      // Drop and recreate district/taluka columns as JSONB
-      'ALTER TABLE stories DROP COLUMN IF EXISTS district',
-      'ALTER TABLE stories ADD COLUMN IF NOT EXISTS district JSONB',
-      'ALTER TABLE stories DROP COLUMN IF EXISTS taluka', 
-      'ALTER TABLE stories ADD COLUMN IF NOT EXISTS taluka JSONB'
+      'ALTER TABLE stories ADD COLUMN IF NOT EXISTS bharty_types JSONB'
     ];
     
     for (const migration of migrations) {

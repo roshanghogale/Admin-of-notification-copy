@@ -11,7 +11,21 @@ const pool = new Pool({
 
 async function migrateStudentUpdatesTable() {
   try {
-    // Check if columns exist and add them if they don't
+    // Check if age_restriction column exists and remove it
+    const checkColumn = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'student_updates' AND column_name = 'age_restriction'
+    `);
+    
+    if (checkColumn.rows.length > 0) {
+      await pool.query(`ALTER TABLE student_updates DROP COLUMN age_restriction`);
+      console.log('Removed column: age_restriction');
+    } else {
+      console.log('Column age_restriction does not exist');
+    }
+    
+    // Check if other columns exist and add them if they don't
     const checkColumns = await pool.query(`
       SELECT column_name 
       FROM information_schema.columns 

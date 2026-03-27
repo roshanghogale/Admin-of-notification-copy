@@ -36,16 +36,12 @@ const createResultHallticket = async (req, res) => {
     parsedWebsiteUrls = parseJsonField(websiteUrls) || [];
 
     let iconUrl = null;
-    let imageUrl = null;
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     
     if (req.files) {
       if (req.files.icon) {
         iconUrl = `${baseUrl}/uploads/${req.files.icon[0].filename}`;
-      }
-      if (req.files.image) {
-        imageUrl = `${baseUrl}/uploads/${req.files.image[0].filename}`;
       }
     }
 
@@ -72,8 +68,8 @@ const createResultHallticket = async (req, res) => {
     const result = await pool.query(`
       INSERT INTO result_hallticket_updates (
         title, category, type, exam_date, education_requirement,
-        website_urls, description, icon_url, image_url, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()) 
+        website_urls, description, icon_url, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) 
       RETURNING *
     `, [
       title.trim(),
@@ -86,8 +82,7 @@ const createResultHallticket = async (req, res) => {
         paragraph1: description1 || '',
         paragraph2: description2 || ''
       }),
-      iconUrl,
-      imageUrl
+      iconUrl
     ]);
 
     const resultHallticket = result.rows[0];
@@ -100,24 +95,56 @@ const createResultHallticket = async (req, res) => {
           title: resultHallticket.title,
           category: resultHallticket.category || '',
           update_type: resultHallticket.type || '',
-          exam_date: resultHallticket.exam_date || null,
-          education_requirement: resultHallticket.education_requirement,
-          website_urls: resultHallticket.website_urls,
-          description: resultHallticket.description,
+          exam_date: resultHallticket.exam_date ? resultHallticket.exam_date.toISOString().split('T')[0] : null,
+          education_categories: JSON.stringify(parsedEducationCategories),
+          bachelor_degrees: JSON.stringify(parsedBachelorDegrees),
+          masters_degrees: JSON.stringify(parsedMastersDegrees),
+          age_groups: JSON.stringify(parseJsonField(req.body.ageGroups) || []),
+          website_urls: typeof resultHallticket.website_urls === 'string' ? resultHallticket.website_urls : JSON.stringify(resultHallticket.website_urls),
+          description: typeof resultHallticket.description === 'string' ? resultHallticket.description : JSON.stringify(resultHallticket.description),
           icon_url: resultHallticket.icon_url || '',
-          image_url: resultHallticket.image_url || '',
-          created_at: resultHallticket.created_at
+          created_at: resultHallticket.created_at ? resultHallticket.created_at.toISOString() : new Date().toISOString()
+        };
+        
+        // Sanitize topic name for FCM (match Android app format)
+        const sanitizeTopic = (topic) => {
+          return topic
+            .replace(/\s+/g, '')
+            .replace(/\./g, '')
+            .replace(/[()]/g, '')
+            .replace(/&/g, '')
+            .replace(/\//g, '')
+            .replace(/-/g, '')
+            .replace(/[^a-zA-Z0-9]/g, '')
+            .substring(0, 900);
         };
         
         const NotificationService = require('../service/NotificationService');
-        await NotificationService.sendNotificationToTopic(
-          'all',
-          null,
-          null,
-          null,
-          null,
-          notificationData
-        );
+        
+        // Result/Hallticket notifications are ONLY sent to age group topics
+        const ageGroups = parseJsonField(req.body.ageGroups) || [];
+        if (ageGroups.length > 0) {
+          for (const ageGroup of ageGroups) {
+            await NotificationService.sendNotificationToTopic(
+              sanitizeTopic(ageGroup),
+              null,
+              null,
+              null,
+              null,
+              notificationData
+            );
+          }
+        } else {
+          // If no age groups selected, send to 'all' topic
+          await NotificationService.sendNotificationToTopic(
+            'all',
+            null,
+            null,
+            null,
+            null,
+            notificationData
+          );
+        }
       } catch (notificationError) {
         console.error('Notification failed:', notificationError);
       }
@@ -174,7 +201,7 @@ const deleteResultHallticket = async (req, res) => {
     
     const resultHallticket = result.rows[0];
     
-    const fileFields = ['icon_url', 'image_url'];
+    const fileFields = ['icon_url'];
     fileFields.forEach(field => {
       if (resultHallticket[field]) {
         try {
@@ -219,8 +246,7 @@ const updateResultHallticket = async (req, res) => {
       education_requirement: 'education_requirement',
       website_urls: 'website_urls',
       description: 'description',
-      icon_url: 'icon_url',
-      image_url: 'image_url'
+      icon_url: 'icon_url'
     };
 
     Object.keys(fieldMap).forEach(key => {
@@ -273,10 +299,16 @@ const initializeResultHallticketTable = async () => {
         website_urls JSONB,
         description JSONB,
         icon_url VARCHAR(255),
-        image_url VARCHAR(255),
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
+    
+    // Drop image_url column if exists
+    try {
+      await pool.query('ALTER TABLE result_hallticket_updates DROP COLUMN IF EXISTS image_url');
+    } catch (err) {
+      console.log('Column image_url already removed or does not exist');
+    }
     
     console.log('Result/Hall ticket updates table initialized');
   } catch (error) {

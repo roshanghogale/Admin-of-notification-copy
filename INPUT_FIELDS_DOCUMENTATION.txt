@@ -1,0 +1,346 @@
+================================================================================
+  ADMIN PANEL - INPUT FIELDS DOCUMENTATION (FRONTEND ONLY)
+  Required = YES means the form will block submission without it
+================================================================================
+
+--------------------------------------------------------------------------------
+1. JOB UPDATES  (App.js - route: "/")
+   API: POST /api/job-updates
+--------------------------------------------------------------------------------
+
+Field                        | Type                        | Required
+-----------------------------|-----------------------------|---------
+Job Type                     | Select                      | YES
+                             |   - banking                 |
+                             |   - private                 |
+                             |   - government              |
+Sub Type                     | Select (depends on type)    | YES
+                             |   banking  -> Private,      |
+                             |               Government    |
+                             |   private  -> Internship,   |
+                             |               Regular       |
+                             |   government -> Maha,       |
+                             |                Central      |
+Total Posts                  | Text                        | YES
+Job Title                    | Text                        | YES
+Post Name                    | Text                        | YES
+Last Date                    | Date                        | YES
+Apply Link                   | URL text                    | YES
+Education Requirement        | Textarea (Marathi/English)  | YES
+  (शिक्षण पात्रता)           |   shown in app display      |
+Education Categories         | Multi-select                | YES
+  (at least 1 required)      |   All, 10th, 12th, Arts,   |
+                             |   Commerce, Engineering,    |
+                             |   Diploma, Medical, etc.    |
+Job Icon                     | File (image) OR             | YES
+                             |   Select from existing icons|
+Job Image/Banner             | File (image)                | YES
+Selection PDF URL            | URL text                    | YES
+Salary                       | Text                        | No
+Age Group                    | Text                        | No
+Job Place                    | Text                        | No
+Application Fees             | Text                        | No
+Note                         | Textarea                    | No
+Bachelor Degrees             | Multi-select                | No
+  (disabled if All/10th/12th)|                             |
+Masters Degrees              | Multi-select                | No
+  (disabled if All/10th/12th)|                             |
+Notification PDF URL         | URL text                    | No
+Syllabus PDF URL             | URL text                    | No
+Send Push Notification       | Checkbox                    | No
+
+
+--------------------------------------------------------------------------------
+2. CURRENT AFFAIRS  (CurrentAffairs.js - route: "/current-affairs")
+   API: POST /api/current-affairs
+--------------------------------------------------------------------------------
+
+Field                        | Type                        | Required
+-----------------------------|-----------------------------|---------
+Title                        | Text                        | YES
+Date                         | Date                        | No
+Content Image                | File (image)                | No
+Notification Banner          | File (image)                | No
+PDF URL                      | URL text                    | No
+Send Push Notification       | Checkbox                    | No
+Notification Date            | Date (only shown when       | No
+  (schedule for 7PM)         |   notification is checked)  |
+
+
+--------------------------------------------------------------------------------
+3. CAREER ROADMAP  (CareerRoadMapPage.js - route: "/carrier-roadmaps")
+   API: POST /api/career-roadmaps
+--------------------------------------------------------------------------------
+
+Field                        | Type                        | Required
+-----------------------------|-----------------------------|---------
+Title                        | Text                        | YES
+Type                         | Select                      | YES
+                             |   - startup                 |
+                             |   - career                  |
+Education Categories         | Multi-select                | No
+  (only shown if type=career)|   All, 10th, 12th, Arts,   |
+                             |   Commerce, Engineering,    |
+                             |   Diploma, Medical, etc.    |
+Bachelor Degrees             | Multi-select                | No
+  (only shown if type=career)|                             |
+Masters Degrees              | Multi-select                | No
+  (only shown if type=career)|                             |
+Career Image                 | File (image)                | No
+Career PDF URL               | URL text                    | No
+Send Push Notification       | Checkbox                    | No
+
+
+--------------------------------------------------------------------------------
+4. STUDENT UPDATES  (StudentUpdates.js - route: "/student-updates")
+   API: POST /api/student-updates
+--------------------------------------------------------------------------------
+
+Field                        | Type                        | Required
+-----------------------------|-----------------------------|---------
+Title                        | Text                        | YES
+Education                    | Text                        | No
+Description                  | Textarea                    | No
+Application Link             | URL text                    | No
+Last Date                    | Date                        | No
+Student Update Icon          | File (image)                | No
+Student Update Image         | File (image)                | No
+Notification PDF URL         | URL text                    | No
+Selection PDF URL            | URL text                    | No
+Send Push Notification       | Checkbox                    | No
+
+
+--------------------------------------------------------------------------------
+5. RESULT / HALL TICKET  (ResultHallTicketUpdates.js - route: "/randh-ticket")
+   API: POST /api/result-halltickets
+--------------------------------------------------------------------------------
+
+Field                        | Type                        | Required
+-----------------------------|-----------------------------|---------
+Title                        | Text                        | YES
+Category                     | Select                      | No
+                             |   - government              |
+                             |   - private                 |
+                             |   - banking                 |
+Type                         | Select                      | No
+                             |   - hallticket              |
+                             |   - result                  |
+Exam Date                    | Date                        | No
+Age Groups                   | Multi-select                | No
+                             |   14 to 18, 19 to 25,       |
+                             |   26 to 31, 32 and above    |
+Education Categories         | Multi-select                | No
+Bachelor Degrees             | Multi-select                | No
+  (disabled if All/10th/12th)|                             |
+Masters Degrees              | Multi-select                | No
+  (disabled if All/10th/12th)|                             |
+Description - Paragraph 1    | Textarea                    | No
+Description - Paragraph 2    | Textarea                    | No
+Website Title                | Text (part of URL entry)    | No
+Website URL                  | URL text (part of URL entry)| No
+  (can add multiple pairs    |                             |
+   using Add URL button)     |                             |
+Icon                         | File (image)                | No
+Send Push Notification       | Checkbox                    | No
+
+
+--------------------------------------------------------------------------------
+6. STORY  (StoryPage.js - route: "/job-updates")
+   API: POST /api/stories
+--------------------------------------------------------------------------------
+
+Field                        | Type                        | Required
+-----------------------------|-----------------------------|---------
+Title                        | Text                        | No
+Type                         | Select                      | No
+                             |   - news                    |
+                             |   - post                    |
+                             |   - promotion               |
+Post/News Document ID        | Text                        | No
+  (shown if type != promotion|   disabled if type = news)  |
+Web URL                      | URL text                    | No
+  (shown only if type =      |   promotion)                |
+Send Push Notification       | Checkbox                    | No
+Is Main Story                | Checkbox                    | No
+Other Type                   | Select (enabled only if     | No
+                             |   Is Main Story checked)    |
+                             |   - education               |
+                             |   - location                |
+                             |   - age group               |
+                             |   - bharty types            |
+Icon                         | File (image)                | No
+Banner Media Type            | Toggle: Image / Video       | No
+Banner Image                 | File (image)                | No
+  (shown if media = image)   |                             |
+Banner Video                 | File (video)                | No
+  (shown if media = video)   |                             |
+Education Categories         | Multi-select                | No
+  (shown if Is Main Story    |                             |
+   + Other Type = education) |                             |
+Bachelor Degrees             | Multi-select                | No
+  (same condition)           |                             |
+Masters Degrees              | Multi-select                | No
+  (same condition)           |                             |
+District                     | Multi-select                | No
+  (shown if Is Main Story    |                             |
+   + Other Type = location)  |                             |
+Taluka                       | Multi-select                | No
+  (same condition)           |                             |
+Age Groups                   | Multi-select                | No
+  (shown if Is Main Story    |                             |
+   + Other Type = age group) |                             |
+Bharty Types                 | Multi-select                | No
+  (shown if Is Main Story    |   Government, Police &      |
+   + Other Type = bharty     |   Defence, Banking          |
+   types)                    |                             |
+Description for Notification | Textarea                    | No
+  (NOT stored in DB,         |                             |
+   only sent in notification)|                             |
+
+
+--------------------------------------------------------------------------------
+7. SLIDER  (SliderPage.js - route: "/slider")
+   API: POST /api/sliders
+--------------------------------------------------------------------------------
+
+Field                        | Type                        | Required
+-----------------------------|-----------------------------|---------
+Title                        | Text                        | YES
+Page Type                    | Select                      | No
+                             |   - home                    |
+                             |   - chat                    |
+                             |   - banking jobs            |
+                             |   - private jobs            |
+                             |   - government jobs         |
+Type                         | Select                      | No
+                             |   - post                    |
+                             |   - news                    |
+                             |   - promotion               |
+Post/News Document ID        | Text                        | No
+  (shown if type != promotion|                             |
+Web URL                      | URL text                    | No
+  (shown only if type =      |   promotion)                |
+Send Push Notification       | Checkbox                    | No
+Is Specific                  | Checkbox                    | No
+Other Type                   | Select (enabled only if     | No
+                             |   Is Specific checked)      |
+                             |   - education               |
+                             |   - location                |
+                             |   - age group               |
+                             |   - bharty types            |
+Education Categories         | Multi-select                | No
+  (shown if Is Specific      |                             |
+   + Other Type = education) |                             |
+Bachelor Degrees             | Multi-select                | No
+  (same condition)           |                             |
+Masters Degrees              | Multi-select                | No
+  (same condition)           |                             |
+District                     | Multi-select                | No
+  (shown if Is Specific      |                             |
+   + Other Type = location)  |                             |
+Taluka                       | Multi-select                | No
+  (same condition)           |                             |
+Age Groups                   | Multi-select                | No
+  (shown if Is Specific      |                             |
+   + Other Type = age group) |                             |
+Bharty Types                 | Multi-select                | No
+  (shown if Is Specific      |   Government, Police &      |
+   + Other Type = bharty     |   Defence, Banking          |
+   types)                    |                             |
+Slider Image                 | File (image)                | No
+
+
+--------------------------------------------------------------------------------
+8. FREE STUDY MATERIAL  (FreeStudyMaterialPage.js - route: "/free-study-material")
+   API: POST /api/study-materials
+--------------------------------------------------------------------------------
+
+Field                        | Type                        | Required
+-----------------------------|-----------------------------|---------
+Title                        | Text                        | YES
+Type                         | Select                      | YES
+                             |   - governmentfree          |
+                             |   - policefree              |
+                             |   - bankingfree             |
+Study Material Image         | File (image)                | No
+Study Material PDF URL       | URL text                    | No
+Send Push Notification       | Checkbox                    | No
+
+
+--------------------------------------------------------------------------------
+9. NEWS  (NewsPage.js - route: "/news")
+   API: POST /api/news
+--------------------------------------------------------------------------------
+
+Field                        | Type                        | Required
+-----------------------------|-----------------------------|---------
+Title                        | Text                        | YES
+Update Type                  | Text                        | YES
+  (e.g. Breaking, Alert,     |                             |
+   Info)                     |                             |
+Date                         | Date (defaults to today)    | No
+Title Description            | Text                        | No
+Sub Title                    | Text                        | No
+Description - Paragraph 1    | Textarea                    | No
+Description - Paragraph 2    | Textarea                    | No
+Send Push Notification       | Checkbox                    | No
+Is Specific                  | Checkbox                    | No
+Other Type                   | Select (enabled only if     | No
+                             |   Is Specific checked)      |
+                             |   - education               |
+                             |   - location                |
+                             |   - age group               |
+Education Categories         | Multi-select                | No
+  (shown if Is Specific      |                             |
+   + Other Type = education) |                             |
+Bachelor Degrees             | Multi-select                | No
+  (same condition)           |                             |
+Masters Degrees              | Multi-select                | No
+  (same condition)           |                             |
+District                     | Multi-select                | No
+  (shown if Is Specific      |                             |
+   + Other Type = location)  |                             |
+Taluka                       | Multi-select                | No
+  (same condition)           |                             |
+Age Groups                   | Multi-select                | No
+  (shown if Is Specific      |                             |
+   + Other Type = age group) |                             |
+News Image                   | File (image)                | No
+
+
+--------------------------------------------------------------------------------
+10. CAROUSEL / ROADMAP SLIDER  (CarouselPage.js)
+    Saves to Firebase Firestore: careerRoadmapSlider collection
+--------------------------------------------------------------------------------
+
+Field                        | Type                        | Required
+-----------------------------|-----------------------------|---------
+Slider Image                 | File (image)                | No
+  (must upload before save)  |                             |
+Send Push Notification       | Checkbox                    | No
+
+NOTE: This page uploads image to Firebase Storage directly (not backend API).
+      Image must be uploaded first using "Upload Image" button before saving.
+
+
+================================================================================
+  REQUIRED FIELDS SUMMARY
+================================================================================
+
+Page                    | Required Fields
+------------------------|--------------------------------------------------
+Job Updates             | Job Type, Sub Type, Total Posts, Job Title,
+                        | Post Name, Last Date, Apply Link,
+                        | Education Requirement, Education Categories,
+                        | Job Icon, Job Image/Banner, Selection PDF URL
+Current Affairs         | Title
+Career Roadmap          | Title, Type
+Student Updates         | Title
+Result / Hall Ticket    | Title
+Story                   | (none required)
+Slider                  | Title
+Free Study Material     | Title, Type
+News                    | Title, Update Type
+Carousel Slider         | (none required)
+
+================================================================================

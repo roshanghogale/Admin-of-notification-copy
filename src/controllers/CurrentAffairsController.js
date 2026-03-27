@@ -1,6 +1,7 @@
 const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs');
+const NotificationService = require('../service/NotificationService');
 
 const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
@@ -13,6 +14,7 @@ const pool = new Pool({
 const createCurrentAffair = async (req, res) => {
   console.log('=== CREATE CURRENT AFFAIR CALLED ===');
   console.log('Body:', req.body);
+  console.log('Banner URL from body:', req.body.bannerUrl);
   console.log('Files:', req.files);
   
   try {
@@ -23,16 +25,14 @@ const createCurrentAffair = async (req, res) => {
     }
 
     let imageUrl = null;
-    let pdfUrl = null;
+    let bannerUrl = req.body.bannerUrl || null;
+    let pdfUrl = req.body.pdfUrl || null;
 
     const baseUrl = req.get('host').includes('mahaalert.cloud') ? 'https://admin.mahaalert.cloud' : `${req.protocol}://${req.get('host')}`;
     
     if (req.files) {
       if (req.files.image) {
         imageUrl = `${baseUrl}/uploads/${req.files.image[0].filename}`;
-      }
-      if (req.files.pdf) {
-        pdfUrl = `${baseUrl}/uploads/${req.files.pdf[0].filename}`;
       }
     }
 
@@ -47,37 +47,34 @@ const createCurrentAffair = async (req, res) => {
     
     const currentAffair = result.rows[0];
     
-    // Send notification if requested
-    if (req.body.notification === 'true' || req.body.notification === true) {
-      try {
-        const notificationData = {
-          type: 'current_affair',
-          id: currentAffair.id.toString(),
-          title: title.trim(),
-          date: date || null,
-          image_url: imageUrl || '',
-          pdf_url: pdfUrl || '',
-          created_at: currentAffair.created_at
-        };
-        
-        const NotificationService = require('../service/NotificationService');
-        await NotificationService.sendNotificationToTopic(
-          'all',
-          null,
-          null,
-          null,
-          null,
-          notificationData
-        );
-      } catch (notificationError) {
-        console.error('Notification failed:', notificationError);
-      }
-    }
-    
+    // Respond immediately - don't wait for notification
     res.status(201).json({ 
       message: 'Success', 
       data: currentAffair 
     });
+
+    // Fire notification in background after response is sent
+    if (req.body.notification === 'true' || req.body.notification === true) {
+      const notificationData = {
+        type: 'current_affairs',
+        id: currentAffair.id.toString(),
+        title: title.trim(),
+        date: date || null,
+        image_url: imageUrl || '',
+        banner_url: bannerUrl || '',
+        pdf_url: pdfUrl || '',
+        created_at: currentAffair.created_at
+      };
+      
+      NotificationService.sendNotificationToTopic(
+        'currentaffairs',
+        null,
+        null,
+        null,
+        null,
+        notificationData
+      ).catch(err => console.error('Notification failed:', err));
+    }
   } catch (error) {
     console.error('ERROR:', error.message);
     res.status(500).json({ error: error.message });
