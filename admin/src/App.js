@@ -37,8 +37,6 @@ import {
 } from "@mui/material";
 import {
   PhotoCamera,
-  PictureAsPdf,
-  Description,
   Close
 } from "@mui/icons-material";
 
@@ -81,9 +79,9 @@ function App() {
   const [iconFile, setIconFile] = useState(null);
   const [selectedIconUrl, setSelectedIconUrl] = useState("");
   const [existingIcons, setExistingIcons] = useState([]);
-  const [pdfFile, setPdfFile] = useState(null);
-  const [selectionPdf, setSelectionPdf] = useState(null);
-  const [syllabusPdf, setSyllabusPdf] = useState(null);
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [selectionPdfUrl, setSelectionPdfUrl] = useState("");
+  const [syllabusPdfUrl, setSyllabusPdfUrl] = useState("");
   const [notification, setNotification] = useState(false);
   const [note, setNote] = useState("");
   const [showIconGrid, setShowIconGrid] = useState(false);
@@ -120,7 +118,7 @@ function App() {
 
   const subTypeOptions = {
     banking: ["Private", "Government"],
-    private: ["Home", "Regular"],
+    private: ["Internship", "Regular"],
     government: ["Maha", "Central"]
   };
 
@@ -188,13 +186,11 @@ function App() {
       { value: totalPosts.trim(), name: "Total Posts" },
       { value: postName.trim(), name: "Post Name" },
       { value: title.trim(), name: "Title" },
-      { value: lastDate, name: "Last Date" },
       { value: applicationLink.trim(), name: "Apply Link" },
       { value: educationRequirement.trim(), name: "Education Requirement" },
       { value: educationCategories.length > 0, name: "Education Category" },
       { value: iconFile || selectedIconUrl, name: "Job Icon" },
-      { value: imageFile, name: "Job Image/Banner" },
-      { value: selectionPdf, name: "Selection PDF" }
+      { value: imageFile, name: "Job Image/Banner" }
     ];
 
     for (const field of requiredFields) {
@@ -240,9 +236,9 @@ function App() {
       if (iconFile) formData.append('icon', iconFile);
       else if (selectedIconUrl) formData.append('iconUrl', selectedIconUrl);
       if (imageFile) formData.append('image', imageFile);
-      if (pdfFile) formData.append('pdf', pdfFile);
-      if (selectionPdf) formData.append('selectionPdf', selectionPdf);
-      if (syllabusPdf) formData.append('syllabusPdf', syllabusPdf);
+      if (pdfUrl.trim()) formData.append('pdfUrl', pdfUrl.trim());
+      if (selectionPdfUrl.trim()) formData.append('selectionPdfUrl', selectionPdfUrl.trim());
+      if (syllabusPdfUrl.trim()) formData.append('syllabusPdfUrl', syllabusPdfUrl.trim());
 
       const response = await axios.post('/api/job-updates', formData, {
         headers: {
@@ -250,42 +246,7 @@ function App() {
         },
       });
 
-      if (notification) {
-        let fcmTopics = [];
-        if (educationCategories.includes("All")) {
-          fcmTopics = ["all"];
-        } else if (educationCategories.includes("10th") || educationCategories.includes("12th")) {
-          fcmTopics = educationCategories.filter(cat => cat === "10th" || cat === "12th");
-        } else {
-          fcmTopics = bachelorDegrees.length > 0 ? bachelorDegrees : ["general"];
-        }
-
-        for (const topic of fcmTopics) {
-          const firebaseData = {
-            topic: topic,
-            data: {
-              notificationType: "job_update",
-              title: title,
-              salary: salary,
-              lastDate: lastDate,
-              postName: postName,
-              educationCategories: JSON.stringify(educationCategories),
-              bachelorDegrees: JSON.stringify(educationCategories.includes("All") ? [] : bachelorDegrees),
-              mastersDegrees: JSON.stringify(educationCategories.includes("All") ? [] : mastersDegrees),
-              ageRequirement: ageRequirement,
-              subType: subType,
-              educationRequirement: educationRequirement,
-              totalPosts: totalPosts,
-              note: note,
-              timestamp: new Date().toISOString()
-            }
-          };
-          await axios.post("https://admin.mahaalert.cloud/api/firebase/send-notification", firebaseData);
-        }
-        toast.success("Job update saved and notification sent!");
-      } else {
-        toast.success("Job update saved successfully!");
-      }
+      toast.success(notification ? "Job update saved and notification sent!" : "Job update saved successfully!");
       
       console.log('Job update response:', response.data);
       console.log('Notification checkbox was:', notification);
@@ -310,9 +271,9 @@ function App() {
       setImageFile(null);
       setIconFile(null);
       setSelectedIconUrl("");
-      setPdfFile(null);
-      setSelectionPdf(null);
-      setSyllabusPdf(null);
+      setPdfUrl("");
+      setSelectionPdfUrl("");
+      setSyllabusPdfUrl("");
     } catch (error) {
       console.error("API error:", error);
       toast.error(`Failed to save data: ${error.response?.data?.error || error.message}`, {
@@ -333,24 +294,7 @@ function App() {
     toast.info("Icon selected successfully!", { position: "top-right" });
   };
 
-  const handlePdfChange = (e) => {
-    setPdfFile(e.target.files[0]);
-    toast.info("PDF selected successfully!", { position: "top-right" });
-  };
 
-  const handleSelectionPdfChange = (e) => {
-    setSelectionPdf(e.target.files[0]);
-    toast.info("Selection PDF selected successfully!", {
-      position: "top-right",
-    });
-  };
-
-  const handleSyllabusPdfChange = (e) => {
-    setSyllabusPdf(e.target.files[0]);
-    toast.info("Syllabus PDF selected successfully!", {
-      position: "top-right",
-    });
-  };
 
 
 
@@ -460,11 +404,10 @@ function App() {
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
-                        label="Job Title"
+                        label="Job Title *"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         variant="outlined"
-                        required
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -517,7 +460,7 @@ function App() {
                     <Grid item xs={12} md={4}>
                       <TextField
                         fullWidth
-                        label="Last Date *"
+                        label="Last Date"
                         type="date"
                         value={lastDate || ""}
                         onChange={(e) => {
@@ -828,88 +771,43 @@ function App() {
                           </Paper>
                         </Grid>
 
-                        {/* Notification PDF Upload */}
+                        {/* Notification PDF URL */}
                         <Grid item xs={12} md={2.4}>
-                          <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2, height: '100%' }} className="file-upload-card">
-                            <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                              Notification PDF
-                            </Typography>
-                            <input
-                              type="file"
-                              name="pdf"
-                              accept=".pdf"
-                              onChange={handlePdfChange}
-                              hidden
-                              id="pdf-upload"
-                            />
-                            <label htmlFor="pdf-upload">
-                              <Button
-                                variant="contained"
-                                component="span"
-                                startIcon={<PictureAsPdf />}
-                                fullWidth
-                                color={pdfFile ? 'success' : 'primary'}
-                              >
-                                {pdfFile ? `Selected: ${pdfFile.name}` : "Select PDF"}
-                              </Button>
-                            </label>
-                          </Paper>
+                          <TextField
+                            fullWidth
+                            label="Notification PDF URL"
+                            value={pdfUrl}
+                            onChange={(e) => setPdfUrl(e.target.value)}
+                            variant="outlined"
+                            placeholder="https://..."
+                            type="url"
+                          />
                         </Grid>
 
-                        {/* Selection PDF Upload */}
+                        {/* Selection PDF URL */}
                         <Grid item xs={12} md={2.4}>
-                          <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2, height: '100%' }} className="file-upload-card">
-                            <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                              Selection PDF *
-                            </Typography>
-                            <input
-                              type="file"
-                              name="selectionPdf"
-                              accept=".pdf"
-                              onChange={handleSelectionPdfChange}
-                              hidden
-                              id="selection-pdf-upload"
-                            />
-                            <label htmlFor="selection-pdf-upload">
-                              <Button
-                                variant="contained"
-                                component="span"
-                                startIcon={<Description />}
-                                fullWidth
-                                color={selectionPdf ? 'success' : 'primary'}
-                              >
-                                {selectionPdf ? `Selected: ${selectionPdf.name}` : "Select PDF"}
-                              </Button>
-                            </label>
-                          </Paper>
+                          <TextField
+                            fullWidth
+                            label="Selection PDF URL"
+                            value={selectionPdfUrl}
+                            onChange={(e) => setSelectionPdfUrl(e.target.value)}
+                            variant="outlined"
+                            placeholder="https://..."
+                            type="url"
+                          />
                         </Grid>
 
-                        {/* Syllabus PDF Upload */}
+                        {/* Syllabus PDF URL */}
                         <Grid item xs={12} md={2.4}>
-                          <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2, height: '100%' }} className="file-upload-card">
-                            <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                              Syllabus PDF
-                            </Typography>
-                            <input
-                              type="file"
-                              name="syllabusPdf"
-                              accept=".pdf"
-                              onChange={handleSyllabusPdfChange}
-                              hidden
-                              id="syllabus-pdf-upload"
-                            />
-                            <label htmlFor="syllabus-pdf-upload">
-                              <Button
-                                variant="contained"
-                                component="span"
-                                startIcon={<Description />}
-                                fullWidth
-                                color={syllabusPdf ? 'success' : 'primary'}
-                              >
-                                {syllabusPdf ? `Selected: ${syllabusPdf.name}` : "Select PDF"}
-                              </Button>
-                            </label>
-                          </Paper>
+                          <TextField
+                            fullWidth
+                            label="Syllabus PDF URL"
+                            value={syllabusPdfUrl}
+                            onChange={(e) => setSyllabusPdfUrl(e.target.value)}
+                            variant="outlined"
+                            placeholder="https://..."
+                            type="url"
+                          />
                         </Grid>
                       </Grid>
                     </Grid>

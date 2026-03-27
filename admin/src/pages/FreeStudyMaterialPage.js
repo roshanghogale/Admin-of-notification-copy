@@ -15,7 +15,7 @@ import {
   Select,
   MenuItem
 } from "@mui/material";
-import { PhotoCamera, PictureAsPdf } from "@mui/icons-material";
+import { PhotoCamera } from "@mui/icons-material";
 import { toast, ToastContainer } from "react-toastify";
 import axios from 'axios';
 import "react-toastify/dist/ReactToastify.css";
@@ -31,11 +31,9 @@ function FreeStudyMaterialPage() {
 
   // File states
   const [imageFile, setImageFile] = useState(null);
-  const [pdfFile, setPdfFile] = useState(null);
 
   // Preview states
   const [imagePreview, setImagePreview] = useState("");
-  const [pdfPreview, setPdfPreview] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,6 +45,16 @@ function FreeStudyMaterialPage() {
 
     if (!type) {
       toast.error("Type is required.", { position: "top-right" });
+      return;
+    }
+
+    if (!imageFile) {
+      toast.error("Study Material Image is required.", { position: "top-right" });
+      return;
+    }
+
+    if (!pdfUrl.trim()) {
+      toast.error("Study Material PDF URL is required.", { position: "top-right" });
       return;
     }
 
@@ -67,26 +75,16 @@ function FreeStudyMaterialPage() {
       if (imageFile) {
         formData.append('image', imageFile);
       }
-      if (pdfFile) {
-        formData.append('pdf', pdfFile);
+      if (pdfUrl.trim()) {
+        formData.append('pdfUrl', pdfUrl.trim());
       }
 
       const response = await axios.post('/api/study-materials', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      if (notification) {
-        const firebaseData = {
-          topic: type,
-          data: {
-            notificationType: "study_material",
-            title: title,
-            type: type,
-            timestamp: new Date().toISOString()
-          }
-        };
-        await axios.post("https://admin.mahaalert.cloud/api/firebase/send-notification", firebaseData);
-      }
+      const documentId = response.data.studyMaterial?.id;
+      
       toast.success("Free Study Material saved successfully!", { position: "top-right" });
 
       // Reset form
@@ -95,9 +93,7 @@ function FreeStudyMaterialPage() {
       setImageUrl("");
       setPdfUrl("");
       setImageFile(null);
-      setPdfFile(null);
       setImagePreview("");
-      setPdfPreview("");
       setNotification(false);
     } catch (error) {
       console.error("Error:", error);
@@ -116,14 +112,7 @@ function FreeStudyMaterialPage() {
     }
   };
 
-  const handlePdfChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setPdfFile(file);
-      setPdfPreview(file.name);
-      toast.info("PDF selected successfully!", { position: "top-right" });
-    }
-  };
+
 
   return (
     <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
@@ -139,26 +128,24 @@ function FreeStudyMaterialPage() {
             <Grid item xs={12} md={8}>
               <TextField
                 fullWidth
-                label="Title"
+                label="Title *"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 variant="outlined"
-                required
               />
             </Grid>
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
-                <InputLabel>Type</InputLabel>
+                <InputLabel>Type *</InputLabel>
                 <Select
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  label="Type"
+                  label="Type *"
                 >
                   <MenuItem value="">Select Type</MenuItem>
-                  <MenuItem value="government">Government</MenuItem>
-                  <MenuItem value="police & defence">Police & Defence</MenuItem>
-                  <MenuItem value="banking">Banking</MenuItem>
-                  <MenuItem value="self improvement">Self Improvement</MenuItem>
+                  <MenuItem value="governmentfree">Government</MenuItem>
+                  <MenuItem value="policefree">Police & Defence</MenuItem>
+                  <MenuItem value="bankingfree">Banking</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -168,7 +155,7 @@ function FreeStudyMaterialPage() {
               <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }} className="file-upload-card">
                 <Box>
                   <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                    Study Material Image
+                    Study Material Image *
                   </Typography>
                   <input
                     type="file"
@@ -198,39 +185,15 @@ function FreeStudyMaterialPage() {
               </Paper>
             </Grid>
             <Grid item xs={12} md={6}>
-              <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }} className="file-upload-card">
-                <Box>
-                  <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                    Study Material PDF
-                  </Typography>
-                  <input
-                    type="file"
-                    name="pdf"
-                    accept=".pdf"
-                    onChange={handlePdfChange}
-                    hidden
-                    id="pdf-upload"
-                  />
-                  <label htmlFor="pdf-upload">
-                    <Button
-                      variant="outlined"
-                      component="span"
-                      startIcon={<PictureAsPdf />}
-                      fullWidth
-                      sx={{ mb: 1 }}
-                    >
-                      Select PDF
-                    </Button>
-                  </label>
-                </Box>
-                {pdfPreview && (
-                  <Box sx={{ mt: 1, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                    <Typography variant="caption" sx={{ wordBreak: 'break-all' }}>
-                      📄 {pdfPreview}
-                    </Typography>
-                  </Box>
-                )}
-              </Paper>
+              <TextField
+                fullWidth
+                label="Study Material PDF URL *"
+                value={pdfUrl}
+                onChange={(e) => setPdfUrl(e.target.value)}
+                variant="outlined"
+                placeholder="https://..."
+                type="url"
+              />
             </Grid>
 
             {/* Checkbox and Submit Button Row */}

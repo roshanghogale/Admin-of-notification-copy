@@ -15,9 +15,14 @@ import {
   Select,
   MenuItem,
   Chip,
-  OutlinedInput
+  OutlinedInput,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton
 } from "@mui/material";
-import { PhotoCamera, VideoLibrary } from "@mui/icons-material";
+import { PhotoCamera, VideoLibrary, Close } from "@mui/icons-material";
 import { toast, ToastContainer } from "react-toastify";
 import axios from 'axios';
 import "react-toastify/dist/ReactToastify.css";
@@ -26,6 +31,7 @@ import "../App.css";
 function StoryPage() {
   const [iconUrl, setIconUrl] = useState("");
   const [title, setTitle] = useState("");
+  const [notificationDescription, setNotificationDescription] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
   const [postDocumentId, setPostDocumentId] = useState("");
   const [webUrl, setWebUrl] = useState("");
@@ -38,6 +44,7 @@ function StoryPage() {
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedTaluka, setSelectedTaluka] = useState("");
   const [ageGroups, setAgeGroups] = useState([]);
+  const [bhartyTypes, setBhartyTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(false);
 
@@ -47,6 +54,19 @@ function StoryPage() {
   // File states
   const [iconFile, setIconFile] = useState(null);
   const [bannerFile, setBannerFile] = useState(null);
+  const [selectedIconUrl, setSelectedIconUrl] = useState("");
+  const [existingIcons, setExistingIcons] = useState([]);
+  const [iconDialogOpen, setIconDialogOpen] = useState(false);
+
+  React.useEffect(() => {
+    axios.get('/api/stories').then(res => {
+      const icons = (res.data.stories || [])
+        .filter(s => s.icon_url)
+        .map(s => ({ url: s.icon_url, title: s.title }))
+        .filter((icon, index, self) => index === self.findIndex(i => i.url === icon.url));
+      setExistingIcons(icons);
+    }).catch(() => {});
+  }, []);
 
   // District and Taluka data
   const districts = [
@@ -98,6 +118,7 @@ function StoryPage() {
   };
 
   const ageGroupOptions = ["14 to 18", "19 to 25", "26 to 31", "32 and above"];
+  const bhartyTypeOptions = ["Government", "Police & Defence", "Banking"];
 
   // Education data from CareerRoadMapPage
   const educationOptions = [
@@ -163,6 +184,31 @@ function StoryPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!title.trim()) {
+      toast.error("Title is required.", { position: "top-right" });
+      return;
+    }
+
+    if (!type) {
+      toast.error("Type is required.", { position: "top-right" });
+      return;
+    }
+
+    if (!iconFile && !selectedIconUrl) {
+      toast.error("Icon is required.", { position: "top-right" });
+      return;
+    }
+
+    if (mediaType === 'image' && !bannerFile) {
+      toast.error("Banner Image is required.", { position: "top-right" });
+      return;
+    }
+
+    if (mediaType === 'video' && !videoFile) {
+      toast.error("Banner Video is required.", { position: "top-right" });
+      return;
+    }
+
     if (!notification) {
       toast.warn(
         "Notification checkbox is not checked. The notification will not be sent.",
@@ -175,6 +221,7 @@ function StoryPage() {
     try {
       const formData = new FormData();
       formData.append('title', title);
+      formData.append('notificationDescription', notificationDescription);
       formData.append('postDocumentId', postDocumentId);
       formData.append('webUrl', webUrl);
       formData.append('type', type);
@@ -185,11 +232,14 @@ function StoryPage() {
       formData.append('mastersDegrees', JSON.stringify(isMainStory && otherType === 'education' && !educationCategories.includes("All") ? mastersDegrees : []));
       formData.append('selectedDistrict', isMainStory && otherType === 'location' ? (Array.isArray(selectedDistrict) && selectedDistrict.length === districts.filter(d => d !== "Select District").length ? 'All' : JSON.stringify(selectedDistrict)) : '');
       formData.append('selectedTaluka', isMainStory && otherType === 'location' ? (Array.isArray(selectedDistrict) && selectedDistrict.length === districts.filter(d => d !== "Select District").length ? 'All' : JSON.stringify(selectedTaluka)) : '');
+      formData.append('bhartyTypes', JSON.stringify(isMainStory && otherType === 'bharty types' ? bhartyTypes : []));
       formData.append('notification', notification);
       formData.append('mediaType', mediaType);
       
       if (iconFile) {
         formData.append('icon', iconFile);
+      } else if (selectedIconUrl) {
+        formData.append('iconUrl', selectedIconUrl);
       }
       if (mediaType === 'image' && bannerFile) {
         formData.append('banner', bannerFile);
@@ -202,57 +252,14 @@ function StoryPage() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      if (notification) {
-        let fcmTopics = [];
-        if (isMainStory && otherType === 'education') {
-          if (educationCategories.includes("All")) {
-            fcmTopics = ["all"];
-          } else if (educationCategories.includes("10th") || educationCategories.includes("12th")) {
-            fcmTopics = educationCategories.filter(cat => cat === "10th" || cat === "12th");
-          } else {
-            fcmTopics = bachelorDegrees.length > 0 ? bachelorDegrees : ["general"];
-          }
-        } else if (isMainStory && otherType === 'location') {
-          if (Array.isArray(selectedDistrict) && selectedDistrict.length === districts.filter(d => d !== "Select District").length) {
-            fcmTopics = ["all"];
-          } else {
-            fcmTopics = Array.isArray(selectedTaluka) ? selectedTaluka : ["general"];
-          }
-        } else if (isMainStory && otherType === 'age group') {
-          fcmTopics = ageGroups.length > 0 ? ageGroups : ["general"];
-        } else {
-          fcmTopics = ["general"];
-        }
-
-        for (const topic of fcmTopics) {
-          const firebaseData = {
-            topic: topic,
-            data: {
-              notificationType: "story",
-              iconUrl: iconUrl,
-              title: title,
-              bannerUrl: bannerUrl,
-              postDocumentId: postDocumentId,
-              type: type,
-              otherType: otherType,
-              isMainStory: isMainStory.toString(),
-              educationCategories: JSON.stringify(isMainStory && otherType === 'education' ? educationCategories : []),
-              bachelorDegrees: JSON.stringify(isMainStory && otherType === 'education' && !educationCategories.includes("All") ? bachelorDegrees : []),
-              mastersDegrees: JSON.stringify(isMainStory && otherType === 'education' && !educationCategories.includes("All") ? mastersDegrees : []),
-              selectedDistrict: isMainStory && otherType === 'location' ? (Array.isArray(selectedDistrict) && selectedDistrict.length === districts.filter(d => d !== "Select District").length ? 'All' : JSON.stringify(selectedDistrict)) : '',
-              selectedTaluka: isMainStory && otherType === 'location' ? (Array.isArray(selectedDistrict) && selectedDistrict.length === districts.filter(d => d !== "Select District").length ? 'All' : JSON.stringify(selectedTaluka)) : '',
-              ageGroups: JSON.stringify(ageGroups),
-              timestamp: new Date().toISOString()
-            }
-          };
-          await axios.post("https://admin.mahaalert.cloud//api/firebase/send-notification", firebaseData);
-        }
-      }
+      const documentId = response.data.story?.id;
+      
       toast.success("Story saved successfully!", { position: "top-right" });
 
       // Reset form
       setIconUrl("");
       setTitle("");
+      setNotificationDescription("");
       setBannerUrl("");
       setPostDocumentId("");
       setWebUrl("");
@@ -265,10 +272,12 @@ function StoryPage() {
       setSelectedDistrict("");
       setSelectedTaluka("");
       setAgeGroups([]);
+      setBhartyTypes([]);
       setIconFile(null);
       setBannerFile(null);
       setVideoFile(null);
       setMediaType('image');
+      setSelectedIconUrl("");
     } catch (error) {
       console.error("Error:", error);
       toast.error(error.response?.data?.error || "An error occurred", { position: "top-right" });
@@ -311,11 +320,11 @@ function StoryPage() {
           </Typography>
           
           <Grid container spacing={3}>
-            {/* Basic Information */}
+            {/* First Row - Basic Information */}
             <Grid item xs={12} md={3}>
               <TextField
                 fullWidth
-                label="Title"
+                label="Title *"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 variant="outlined"
@@ -323,11 +332,11 @@ function StoryPage() {
             </Grid>
             <Grid item xs={12} md={2}>
               <FormControl fullWidth>
-                <InputLabel>Type</InputLabel>
+                <InputLabel>Type *</InputLabel>
                 <Select
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  label="Type"
+                  label="Type *"
                 >
                   <MenuItem value="">Select Type</MenuItem>
                   <MenuItem value="news">News</MenuItem>
@@ -371,6 +380,7 @@ function StoryPage() {
                     setSelectedDistrict("");
                     setSelectedTaluka("");
                     setAgeGroups([]);
+                    setBhartyTypes([]);
                   }}
                   label="Other Type"
                   disabled={!isMainStory}
@@ -379,11 +389,13 @@ function StoryPage() {
                   <MenuItem value="education">Education</MenuItem>
                   <MenuItem value="location">Location</MenuItem>
                   <MenuItem value="age group">Age Group</MenuItem>
+                  <MenuItem value="bharty types">Bharty Types</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
-            {/* Checkboxes and File Uploads Row */}
-            <Grid item xs={12} md={4}>
+
+            {/* Second Row - Checkboxes and File Uploads */}
+            <Grid item xs={12} md={3}>
               <Paper elevation={2} sx={{ p: 2, borderRadius: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <FormControlLabel
                   control={
@@ -410,6 +422,7 @@ function StoryPage() {
                           setSelectedDistrict("");
                           setSelectedTaluka("");
                           setAgeGroups([]);
+                          setBhartyTypes([]);
                         }
                       }}
                       color="primary"
@@ -423,13 +436,25 @@ function StoryPage() {
             <Grid item xs={12} md={3}>
               <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }} className="file-upload-card">
                 <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                  Icon
+                  Icon *
                 </Typography>
+                {existingIcons.length > 0 && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setIconDialogOpen(true)}
+                    fullWidth
+                    sx={{ mb: 1 }}
+                  >
+                    Select Existing Icons
+                  </Button>
+                )}
+                <Typography variant="caption" sx={{ display: 'block', mb: 1 }}>OR</Typography>
                 <input
                   type="file"
                   name="icon"
                   accept="image/*"
-                  onChange={handleIconChange}
+                  onChange={(e) => { handleIconChange(e); setSelectedIconUrl(""); }}
                   hidden
                   id="icon-upload"
                 />
@@ -441,7 +466,7 @@ function StoryPage() {
                     fullWidth
                     sx={{ mb: 1 }}
                   >
-                    Select Icon
+                    Upload New Icon
                   </Button>
                 </label>
                 {iconFile && (
@@ -449,12 +474,17 @@ function StoryPage() {
                     Selected: {iconFile.name}
                   </Typography>
                 )}
+                {selectedIconUrl && (
+                  <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
+                    Using existing icon
+                  </Typography>
+                )}
               </Paper>
             </Grid>
-            <Grid item xs={12} md={5}>
+            <Grid item xs={12} md={6}>
               <Paper elevation={2} sx={{ p: 2, borderRadius: 2, height: '100%' }} className="file-upload-card">
                 <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600} textAlign="center">
-                  Banner Media
+                  Banner Media *
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={6}>
@@ -830,6 +860,66 @@ function StoryPage() {
                 </FormControl>
               </Grid>
             )}
+            {isMainStory && otherType === "bharty types" && (
+              <Grid item xs={12} md={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Bharty Types</InputLabel>
+                  <Select
+                    multiple
+                    value={bhartyTypes}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const availableBhartyTypes = bhartyTypeOptions;
+                      
+                      if (value.includes("All")) {
+                        if (bhartyTypes.length === availableBhartyTypes.length) {
+                          setBhartyTypes([]);
+                        } else {
+                          setBhartyTypes(availableBhartyTypes);
+                        }
+                        return;
+                      }
+                      
+                      setBhartyTypes(value);
+                    }}
+                    input={<OutlinedInput label="Bharty Types" />}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => (
+                          <Chip key={value} label={value} size="small" />
+                        ))}
+                      </Box>
+                    )}
+                  >
+                    <MenuItem key="All" value="All">
+                      <Checkbox checked={bhartyTypes.length === bhartyTypeOptions.length && bhartyTypes.length > 0} />
+                      All
+                    </MenuItem>
+                    {bhartyTypeOptions.map((option) => (
+                      <MenuItem key={option} value={option}>
+                        <Checkbox checked={bhartyTypes.indexOf(option) > -1} />
+                        {option}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            )}
+            
+            {/* Description Field - Full Width at Bottom */}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Description for Notification"
+                value={notificationDescription}
+                onChange={(e) => setNotificationDescription(e.target.value)}
+                variant="outlined"
+                multiline
+                rows={4}
+                placeholder="This description will only be sent in notification (not stored in database)"
+              />
+            </Grid>
+            
             <Grid item xs={12}>
               <Button
                 variant="contained"
@@ -846,6 +936,43 @@ function StoryPage() {
           </Grid>
         </CardContent>
       </Card>
+      {/* Icon Selection Dialog */}
+      <Dialog open={iconDialogOpen} onClose={() => setIconDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          Select Existing Icon
+          <IconButton onClick={() => setIconDialogOpen(false)}><Close /></IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 2, p: 2 }}>
+            {existingIcons.map((icon, index) => (
+              <Box
+                key={index}
+                onClick={() => { setSelectedIconUrl(icon.url); setIconFile(null); setIconDialogOpen(false); toast.success('Icon selected successfully!'); }}
+                sx={{
+                  width: 100, height: 100,
+                  border: selectedIconUrl === icon.url ? '3px solid #1976d2' : '2px solid #ddd',
+                  borderRadius: 2, cursor: 'pointer', overflow: 'hidden', position: 'relative',
+                  transition: 'all 0.3s ease',
+                  '&:hover': { borderColor: '#1976d2', transform: 'scale(1.05)', boxShadow: '0 8px 16px rgba(25,118,210,0.3)' }
+                }}
+              >
+                <img src={icon.url} alt={`Icon ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {selectedIconUrl === icon.url && (
+                  <Box sx={{
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    bgcolor: 'rgba(25,118,210,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    <Typography variant="body2" sx={{ color: 'white', fontWeight: 'bold' }}>✓ Selected</Typography>
+                  </Box>
+                )}
+              </Box>
+            ))}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIconDialogOpen(false)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

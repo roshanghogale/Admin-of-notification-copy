@@ -38,8 +38,10 @@ function SliderPage() {
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedTaluka, setSelectedTaluka] = useState("");
   const [ageGroups, setAgeGroups] = useState([]);
+  const [bhartyTypes, setBhartyTypes] = useState([]);
 
   const ageGroupOptions = ["14 to 18", "19 to 25", "26 to 31", "32 and above"];
+  const bhartyTypeOptions = ["Government", "Police & Defence", "Banking"];
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(false);
 
@@ -167,6 +169,21 @@ function SliderPage() {
       return;
     }
 
+    if (!pageType) {
+      toast.error("Page Type is required.", { position: "top-right" });
+      return;
+    }
+
+    if (!type) {
+      toast.error("Type is required.", { position: "top-right" });
+      return;
+    }
+
+    if (!imageFile) {
+      toast.error("Slider Image is required.", { position: "top-right" });
+      return;
+    }
+
     if (!notification) {
       toast.warn(
         "Notification checkbox is not checked. The notification will not be sent.",
@@ -190,6 +207,7 @@ function SliderPage() {
       formData.append('selectedDistrict', isSpecific && otherType === 'location' ? (Array.isArray(selectedDistrict) && selectedDistrict.length === districts.filter(d => d !== "Select District").length ? 'All' : JSON.stringify(selectedDistrict)) : '');
       formData.append('selectedTaluka', isSpecific && otherType === 'location' ? (Array.isArray(selectedDistrict) && selectedDistrict.length === districts.filter(d => d !== "Select District").length ? 'All' : JSON.stringify(selectedTaluka)) : '');
       formData.append('ageGroups', JSON.stringify(isSpecific && otherType === 'age group' ? ageGroups : []));
+      formData.append('bhartyTypes', JSON.stringify(isSpecific && otherType === 'bharty types' ? bhartyTypes : []));
       formData.append('notification', notification);
       
       if (imageFile) {
@@ -200,52 +218,8 @@ function SliderPage() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      if (notification) {
-        let fcmTopics = [];
-        if (isSpecific && otherType === 'education') {
-          if (educationCategories.includes("All")) {
-            fcmTopics = ["all"];
-          } else if (educationCategories.includes("10th") || educationCategories.includes("12th")) {
-            fcmTopics = educationCategories.filter(cat => cat === "10th" || cat === "12th");
-          } else {
-            fcmTopics = bachelorDegrees.length > 0 ? bachelorDegrees : ["general"];
-          }
-        } else if (isSpecific && otherType === 'location') {
-          if (Array.isArray(selectedDistrict) && selectedDistrict.length === districts.filter(d => d !== "Select District").length) {
-            fcmTopics = ["all"];
-          } else {
-            fcmTopics = Array.isArray(selectedTaluka) ? selectedTaluka : ["general"];
-          }
-        } else if (isSpecific && otherType === 'age group') {
-          fcmTopics = ageGroups.length > 0 ? ageGroups : ["general"];
-        } else {
-          fcmTopics = ["general"];
-        }
-
-        for (const topic of fcmTopics) {
-          const firebaseData = {
-            topic: topic,
-            data: {
-              notificationType: "slider",
-              title: title,
-              postDocumentId: postDocumentId,
-              webUrl: webUrl,
-              type: type,
-              pageType: pageType,
-              isSpecific: isSpecific.toString(),
-              otherType: otherType,
-              educationCategories: JSON.stringify(isSpecific && otherType === 'education' ? educationCategories : []),
-              bachelorDegrees: JSON.stringify(isSpecific && otherType === 'education' && !educationCategories.includes("All") ? bachelorDegrees : []),
-              mastersDegrees: JSON.stringify(isSpecific && otherType === 'education' && !educationCategories.includes("All") ? mastersDegrees : []),
-              selectedDistrict: isSpecific && otherType === 'location' ? (Array.isArray(selectedDistrict) && selectedDistrict.length === districts.filter(d => d !== "Select District").length ? 'All' : JSON.stringify(selectedDistrict)) : '',
-              selectedTaluka: isSpecific && otherType === 'location' ? (Array.isArray(selectedDistrict) && selectedDistrict.length === districts.filter(d => d !== "Select District").length ? 'All' : JSON.stringify(selectedTaluka)) : '',
-              ageGroups: JSON.stringify(isSpecific && otherType === 'age group' ? ageGroups : []),
-              timestamp: new Date().toISOString()
-            }
-          };
-          await axios.post("https://admin.mahaalert.cloud/api/firebase/send-notification", firebaseData);
-        }
-      }
+      const documentId = response.data.slider?.id;
+      
       toast.success("Slider saved successfully!", { position: "top-right" });
 
       // Reset form
@@ -262,6 +236,7 @@ function SliderPage() {
       setSelectedDistrict("");
       setSelectedTaluka("");
       setAgeGroups([]);
+      setBhartyTypes([]);
       setImageUrl("");
       setImageFile(null);
       setImagePreview("");
@@ -296,11 +271,11 @@ function SliderPage() {
             {/* Basic Information */}
             <Grid item xs={12} md={3}>
               <FormControl fullWidth>
-                <InputLabel>Page Type</InputLabel>
+                <InputLabel>Page Type *</InputLabel>
                 <Select
                   value={pageType}
                   onChange={(e) => setPageType(e.target.value)}
-                  label="Page Type"
+                  label="Page Type *"
                 >
                   <MenuItem value="">Select Page Type</MenuItem>
                   <MenuItem value="home">Home</MenuItem>
@@ -314,20 +289,19 @@ function SliderPage() {
             <Grid item xs={12} md={3}>
               <TextField
                 fullWidth
-                label="Title"
+                label="Title *"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 variant="outlined"
-                required
               />
             </Grid>
             <Grid item xs={12} md={2}>
               <FormControl fullWidth>
-                <InputLabel>Type</InputLabel>
+                <InputLabel>Type *</InputLabel>
                 <Select
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  label="Type"
+                  label="Type *"
                 >
                   <MenuItem value="">Select Type</MenuItem>
                   <MenuItem value="post">Post</MenuItem>
@@ -387,6 +361,7 @@ function SliderPage() {
                           setMastersDegrees([]);
                           setSelectedDistrict("");
                           setSelectedTaluka("");
+                          setBhartyTypes([]);
                         }
                       }}
                       color="primary"
@@ -409,6 +384,7 @@ function SliderPage() {
                     setSelectedDistrict("");
                     setSelectedTaluka("");
                     setAgeGroups([]);
+                    setBhartyTypes([]);
                   }}
                   label="Other Type"
                   disabled={!isSpecific}
@@ -417,6 +393,7 @@ function SliderPage() {
                   <MenuItem value="education">Education</MenuItem>
                   <MenuItem value="location">Location</MenuItem>
                   <MenuItem value="age group">Age Group</MenuItem>
+                  <MenuItem value="bharty types">Bharty Types</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -702,12 +679,57 @@ function SliderPage() {
                 </FormControl>
               </Grid>
             )}
+            {isSpecific && otherType === "bharty types" && (
+              <Grid item xs={12} md={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Bharty Types</InputLabel>
+                  <Select
+                    multiple
+                    value={bhartyTypes}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const availableBhartyTypes = bhartyTypeOptions;
+                      
+                      if (value.includes("All")) {
+                        if (bhartyTypes.length === availableBhartyTypes.length) {
+                          setBhartyTypes([]);
+                        } else {
+                          setBhartyTypes(availableBhartyTypes);
+                        }
+                        return;
+                      }
+                      
+                      setBhartyTypes(value);
+                    }}
+                    input={<OutlinedInput label="Bharty Types" />}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => (
+                          <Chip key={value} label={value} size="small" />
+                        ))}
+                      </Box>
+                    )}
+                  >
+                    <MenuItem key="All" value="All">
+                      <Checkbox checked={bhartyTypes.length === bhartyTypeOptions.length && bhartyTypes.length > 0} />
+                      All
+                    </MenuItem>
+                    {bhartyTypeOptions.map((option) => (
+                      <MenuItem key={option} value={option}>
+                        <Checkbox checked={bhartyTypes.indexOf(option) > -1} />
+                        {option}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            )}
 
             {/* File Upload and Save Button Row */}
             <Grid item xs={12} md={6}>
               <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2 }} className="file-upload-card">
                 <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                  Slider Image
+                  Slider Image *
                 </Typography>
                 <input
                   type="file"

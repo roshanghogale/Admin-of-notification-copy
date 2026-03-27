@@ -23,8 +23,7 @@ import {
   Paper
 } from "@mui/material";
 import {
-  PhotoCamera,
-  PictureAsPdf
+  PhotoCamera
 } from "@mui/icons-material";
 import CareerRoadmapSlider from "../components/CareerRoadmapSlider";
 
@@ -36,7 +35,7 @@ function CareerRoadMapPage() {
   const [mastersDegrees, setMastersDegrees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [imageFile, setImageFile] = useState(null);
-  const [pdfFile, setPdfFile] = useState(null);
+  const [pdfUrl, setPdfUrl] = useState("");
   const [notification, setNotification] = useState(false);
 
 
@@ -114,6 +113,16 @@ function CareerRoadMapPage() {
       return;
     }
 
+    if (!imageFile) {
+      toast.error("Career Image is required.", { position: "top-right" });
+      return;
+    }
+
+    if (!pdfUrl.trim()) {
+      toast.error("Career PDF URL is required.", { position: "top-right" });
+      return;
+    }
+
     if (!notification) {
       toast.warn(
         "Notification checkbox is not checked. The notification will not be sent.",
@@ -133,39 +142,14 @@ function CareerRoadMapPage() {
       formData.append('notification', notification);
       
       if (imageFile) formData.append('image', imageFile);
-      if (pdfFile) formData.append('pdf', pdfFile);
+      if (pdfUrl.trim()) formData.append('pdfUrl', pdfUrl.trim());
 
-      await axios.post('/api/career-roadmaps', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const response = await axios.post('/api/career-roadmaps', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
+      const documentId = response.data.careerRoadmap?.id;
 
-      if (notification) {
-        let fcmTopics = [];
-        if (educationCategories.includes("All")) {
-          fcmTopics = ["all"];
-        } else if (educationCategories.includes("10th") || educationCategories.includes("12th")) {
-          fcmTopics = educationCategories.filter(cat => cat === "10th" || cat === "12th");
-        } else {
-          fcmTopics = bachelorDegrees.length > 0 ? bachelorDegrees : ["general"];
-        }
-
-        for (const topic of fcmTopics) {
-          const firebaseData = {
-            topic: topic,
-            data: {
-              notificationType: "career_roadmap",
-              title: title,
-              type: type,
-              educationCategories: JSON.stringify(educationCategories),
-              bachelorDegrees: JSON.stringify(educationCategories.includes("All") ? [] : bachelorDegrees),
-              mastersDegrees: JSON.stringify(educationCategories.includes("All") ? [] : mastersDegrees),
-              timestamp: new Date().toISOString()
-            }
-          };
-          await axios.post("https://admin.mahaalert.cloud/api/firebase/send-notification", firebaseData);
-        }
+      if (notification && documentId) {
         toast.success("Career roadmap saved and notification sent!");
       } else {
         toast.success("Career roadmap saved successfully!");
@@ -178,7 +162,7 @@ function CareerRoadMapPage() {
       setBachelorDegrees([]);
       setMastersDegrees([]);
       setImageFile(null);
-      setPdfFile(null);
+      setPdfUrl("");
     } catch (error) {
       console.error("Firestore error:", error.message);
       toast.error(`Failed to save data: ${error.message}`, {
@@ -194,10 +178,7 @@ function CareerRoadMapPage() {
     toast.info("Image selected successfully!", { position: "top-right" });
   };
 
-  const handlePdfChange = (e) => {
-    setPdfFile(e.target.files[0]);
-    toast.info("PDF selected successfully!", { position: "top-right" });
-  };
+
 
 
 
@@ -216,22 +197,21 @@ function CareerRoadMapPage() {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Title"
+                label="Title *"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 variant="outlined"
-                required
               />
             </Grid>
 
             {/* Type Selection */}
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth required>
-                <InputLabel>Type</InputLabel>
+              <FormControl fullWidth>
+                <InputLabel>Type *</InputLabel>
                 <Select
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  label="Type"
+                  label="Type *"
                 >
                   <MenuItem value="startup">Startup Roadmap</MenuItem>
                   <MenuItem value="career">Career Roadmap</MenuItem>
@@ -417,7 +397,7 @@ function CareerRoadMapPage() {
                 <Grid item xs={12} md={6}>
                   <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2 }} className="file-upload-card">
                     <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                      Career Image
+                      Career Image *
                     </Typography>
                     <input
                       type="file"
@@ -441,32 +421,17 @@ function CareerRoadMapPage() {
                   </Paper>
                 </Grid>
 
-                {/* PDF Upload */}
+                {/* PDF URL */}
                 <Grid item xs={12} md={6}>
-                  <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2 }} className="file-upload-card">
-                    <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                      Career PDF
-                    </Typography>
-                    <input
-                      type="file"
-                      name="pdf"
-                      accept=".pdf"
-                      onChange={handlePdfChange}
-                      hidden
-                      id="pdf-upload"
-                    />
-                    <label htmlFor="pdf-upload">
-                      <Button
-                        variant="contained"
-                        component="span"
-                        startIcon={<PictureAsPdf />}
-                        fullWidth
-                        color={pdfFile ? 'success' : 'primary'}
-                      >
-                        {pdfFile ? `Selected: ${pdfFile.name}` : "Select PDF"}
-                      </Button>
-                    </label>
-                  </Paper>
+                  <TextField
+                    fullWidth
+                    label="Career PDF URL *"
+                    value={pdfUrl}
+                    onChange={(e) => setPdfUrl(e.target.value)}
+                    variant="outlined"
+                    placeholder="https://..."
+                    type="url"
+                  />
                 </Grid>
               </Grid>
             </Grid>

@@ -20,6 +20,8 @@ import {
 import { PhotoCamera } from "@mui/icons-material";
 import { toast, ToastContainer } from "react-toastify";
 import axios from "axios";
+import { NOTIFICATION_CONFIG } from "../config/notificationConfig";
+import { sanitizeTopic } from "../utils/topicSanitizer";
 
 import "react-toastify/dist/ReactToastify.css";
 import "../App.css";
@@ -41,7 +43,7 @@ function Notification() {
   const [bachelorDegrees, setBachelorDegrees] = useState([]);
   const [mastersDegrees, setMastersDegrees] = useState([]);
   const [selectedDistrict, setSelectedDistrict] = useState("");
-  const [selectedTaluka, setSelectedTaluka] = useState("");
+  const [selectedTaluka, setSelectedTaluka] = useState([]);
   const [ageGroups, setAgeGroups] = useState([]);
 
   // District and Taluka data
@@ -167,24 +169,30 @@ function Notification() {
     try {
       let fcmTopics = [];
       
-      if (isSpecific && otherType === "education") {
+      if (!isSpecific || !otherType || otherType === "") {
+        fcmTopics = ["all"];
+      } else if (otherType === "education") {
         if (educationCategories.includes("All")) {
           fcmTopics = ["all"];
         } else if (educationCategories.includes("10th") || educationCategories.includes("12th")) {
-          fcmTopics = educationCategories.filter(cat => cat === "10th" || cat === "12th");
+          fcmTopics = educationCategories.map(cat => cat === "10th" ? "10th" : cat === "12th" ? "12th" : sanitizeTopic(cat));
         } else {
-          fcmTopics = bachelorDegrees.length > 0 ? bachelorDegrees : ["general"];
+          fcmTopics = bachelorDegrees.length > 0 ? bachelorDegrees.map(sanitizeTopic) : ["all"];
         }
-      } else if (isSpecific && otherType === "location") {
-        if (selectedDistrict === "All") {
+      } else if (otherType === "location") {
+        if (selectedDistrict === "All" || selectedTaluka.includes("All")) {
           fcmTopics = ["all"];
         } else {
-          fcmTopics = selectedTaluka ? [selectedTaluka] : ["general"];
+          fcmTopics = selectedTaluka.length > 0 ? selectedTaluka.map(sanitizeTopic) : ["all"];
         }
-      } else if (isSpecific && otherType === "age group") {
-        fcmTopics = ageGroups.length > 0 ? ageGroups : ["general"];
+      } else if (otherType === "age group") {
+        if (ageGroups.includes("All")) {
+          fcmTopics = ["all"];
+        } else {
+          fcmTopics = ageGroups.length > 0 ? ageGroups.map(ag => sanitizeTopic(ag.replace(/ and /g, ''))) : ["all"];
+        }
       } else {
-        fcmTopics = ["general"];
+        fcmTopics = ["all"];
       }
       
       // Create FormData for file upload
@@ -198,7 +206,7 @@ function Notification() {
       formData.append('bachelorDegrees', JSON.stringify(isSpecific && otherType === "education" && !educationCategories.includes("All") ? bachelorDegrees : []));
       formData.append('mastersDegrees', JSON.stringify(isSpecific && otherType === "education" && !educationCategories.includes("All") ? mastersDegrees : []));
       formData.append('district', isSpecific && otherType === "location" ? selectedDistrict : "");
-      formData.append('taluka', isSpecific && otherType === "location" ? selectedTaluka : "");
+      formData.append('taluka', isSpecific && otherType === "location" ? JSON.stringify(selectedTaluka) : JSON.stringify([]));
       formData.append('ageGroups', JSON.stringify(isSpecific && otherType === "age group" ? ageGroups : []));
       
       if (imageFile) {
@@ -236,14 +244,14 @@ function Notification() {
               bachelorDegrees: JSON.stringify(isSpecific && otherType === "education" && !educationCategories.includes("All") ? bachelorDegrees : []),
               mastersDegrees: JSON.stringify(isSpecific && otherType === "education" && !educationCategories.includes("All") ? mastersDegrees : []),
               district: isSpecific && otherType === "location" ? selectedDistrict : "",
-              taluka: isSpecific && otherType === "location" ? selectedTaluka : "",
+              taluka: isSpecific && otherType === "location" ? JSON.stringify(selectedTaluka) : JSON.stringify([]),
               ageGroups: JSON.stringify(isSpecific && otherType === "age group" ? ageGroups : []),
               timestamp: new Date().toISOString()
             }
           };
 
           await axios.post(
-            "https://admin.mahaalert.cloud/api/firebase/send-notification",
+            NOTIFICATION_CONFIG.API_URL,
             firebaseData
           );
         }
@@ -266,7 +274,7 @@ function Notification() {
         setBachelorDegrees([]);
         setMastersDegrees([]);
         setSelectedDistrict("");
-        setSelectedTaluka("");
+        setSelectedTaluka([]);
         setAgeGroups([]);
       } else {
         toast.error("Failed to send notification", { position: "top-right" });
@@ -340,7 +348,7 @@ function Notification() {
                     setBachelorDegrees([]);
                     setMastersDegrees([]);
                     setSelectedDistrict("");
-                    setSelectedTaluka("");
+                    setSelectedTaluka([]);
                     setAgeGroups([]);
                   }}
                   label="Other Type"
@@ -513,7 +521,7 @@ function Notification() {
                       value={selectedDistrict}
                       onChange={(e) => {
                         setSelectedDistrict(e.target.value);
-                        setSelectedTaluka("");
+                        setSelectedTaluka([]);
                       }}
                       label="District"
                     >
@@ -527,12 +535,23 @@ function Notification() {
                   <FormControl fullWidth disabled={!selectedDistrict || selectedDistrict === "Select District"}>
                     <InputLabel>Taluka</InputLabel>
                     <Select
+                      multiple
                       value={selectedTaluka}
                       onChange={(e) => setSelectedTaluka(e.target.value)}
-                      label="Taluka"
+                      input={<OutlinedInput label="Taluka" />}
+                      renderValue={(selected) => (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {selected.map((value) => (
+                            <Chip key={value} label={value} size="small" />
+                          ))}
+                        </Box>
+                      )}
                     >
-                      {selectedDistrict && talukaMap[selectedDistrict]?.map((taluka) => (
-                        <MenuItem key={taluka} value={taluka}>{taluka}</MenuItem>
+                      {selectedDistrict && talukaMap[selectedDistrict]?.filter(t => t !== "Select Taluka").map((taluka) => (
+                        <MenuItem key={taluka} value={taluka}>
+                          <Checkbox checked={selectedTaluka.indexOf(taluka) > -1} />
+                          {taluka}
+                        </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
@@ -634,7 +653,7 @@ function Notification() {
                             setBachelorDegrees([]);
                             setMastersDegrees([]);
                             setSelectedDistrict("");
-                            setSelectedTaluka("");
+                            setSelectedTaluka([]);
                             setAgeGroups([]);
                           }
                         }}

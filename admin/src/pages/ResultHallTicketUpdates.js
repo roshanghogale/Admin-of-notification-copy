@@ -20,11 +20,17 @@ import {
   OutlinedInput,
   FormControlLabel,
   Checkbox,
-  Paper
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton
 } from "@mui/material";
 import {
   PhotoCamera,
-  Add
+  Add,
+  Close
 } from "@mui/icons-material";
 
 function ResultHallTicketUpdates() {
@@ -41,9 +47,21 @@ function ResultHallTicketUpdates() {
   const [description2, setDescription2] = useState("");
   const [websiteUrls, setWebsiteUrls] = useState([{ title: "", url: "" }]);
   const [iconFile, setIconFile] = useState(null);
-  const [imageFile, setImageFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(false);
+  const [selectedIconUrl, setSelectedIconUrl] = useState("");
+  const [existingIcons, setExistingIcons] = useState([]);
+  const [iconDialogOpen, setIconDialogOpen] = useState(false);
+
+  React.useEffect(() => {
+    axios.get('/api/result-halltickets').then(res => {
+      const icons = (res.data.resultHalltickets || [])
+        .filter(r => r.icon_url)
+        .map(r => ({ url: r.icon_url, title: r.title }))
+        .filter((icon, index, self) => index === self.findIndex(i => i.url === icon.url));
+      setExistingIcons(icons);
+    }).catch(() => {});
+  }, []);
 
   const ageGroupOptions = ["14 to 18", "19 to 25", "26 to 31", "32 and above"];
 
@@ -117,6 +135,32 @@ function ResultHallTicketUpdates() {
       return;
     }
 
+    if (!category) {
+      toast.error("Category is required.");
+      return;
+    }
+
+    if (!type) {
+      toast.error("Type is required.");
+      return;
+    }
+
+    if (!description1.trim()) {
+      toast.error("Description Paragraph 1 is required.");
+      return;
+    }
+
+    const validUrls = websiteUrls.filter(item => item.title.trim() && item.url.trim());
+    if (validUrls.length === 0) {
+      toast.error("At least one Website URL with title and URL is required.");
+      return;
+    }
+
+    if (!iconFile && !selectedIconUrl) {
+      toast.error("Icon is required.");
+      return;
+    }
+
     setLoading(true);
     try {
       const formData = new FormData();
@@ -135,7 +179,7 @@ function ResultHallTicketUpdates() {
       formData.append('notification', notification);
       
       if (iconFile) formData.append('icon', iconFile);
-      if (imageFile) formData.append('image', imageFile);
+      else if (selectedIconUrl) formData.append('iconUrl', selectedIconUrl);
 
       const response = await fetch('/api/result-halltickets', {
         method: 'POST',
@@ -143,42 +187,9 @@ function ResultHallTicketUpdates() {
       });
 
       if (response.ok) {
-        if (notification) {
-          let fcmTopics = [];
-          if (educationCategories.includes("All")) {
-            fcmTopics = ["all"];
-          } else if (educationCategories.includes("10th") || educationCategories.includes("12th")) {
-            fcmTopics = educationCategories.filter(cat => cat === "10th" || cat === "12th");
-          } else {
-            fcmTopics = [...new Set([...bachelorDegrees, ...ageGroups])].filter(t => t);
-            if (fcmTopics.length === 0) fcmTopics = ["general"];
-          }
-
-          for (const topic of fcmTopics) {
-            const firebaseData = {
-              topic: topic,
-              data: {
-                notificationType: "result_hallticket",
-                title: title,
-  
-                category: category,
-                type: type,
-                examDate: examDate,
-                educationCategories: JSON.stringify(educationCategories),
-                bachelorDegrees: JSON.stringify(educationCategories.includes("All") ? [] : bachelorDegrees),
-                mastersDegrees: JSON.stringify(educationCategories.includes("All") ? [] : mastersDegrees),
-                ageGroups: JSON.stringify(ageGroups),
-                description1: description1,
-                description2: description2,
-                timestamp: new Date().toISOString()
-              }
-            };
-            await axios.post("https://admin.mahaalert.cloud/api/firebase/send-notification", firebaseData);
-          }
-        }
+        const result = await response.json();
         toast.success(notification ? "Result/Hall ticket update saved and notification sent!" : "Result/Hall ticket update saved successfully!");
         setTitle("");
-
         setCategory("");
         setType("");
         setExamDate(null);
@@ -190,7 +201,7 @@ function ResultHallTicketUpdates() {
         setDescription2("");
         setWebsiteUrls([{ title: "", url: "" }]);
         setIconFile(null);
-        setImageFile(null);
+        setSelectedIconUrl("");
         setNotification(false);
       } else {
         throw new Error('Failed to save result/hall ticket update');
@@ -207,10 +218,6 @@ function ResultHallTicketUpdates() {
     setIconFile(e.target.files[0]);
   };
 
-  const handleImageChange = (e) => {
-    setImageFile(e.target.files[0]);
-  };
-
   return (
     <Box sx={{ p: 3 }}>
       <ToastContainer />
@@ -224,11 +231,10 @@ function ResultHallTicketUpdates() {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Title"
+                label="Title *"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 variant="outlined"
-                required
               />
             </Grid>
             <Grid item xs={12} md={6}>
@@ -278,11 +284,11 @@ function ResultHallTicketUpdates() {
             {/* Category and Type */}
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
-                <InputLabel>Category</InputLabel>
+                <InputLabel>Category *</InputLabel>
                 <Select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  label="Category"
+                  label="Category *"
                 >
                   <MenuItem value="">Select Category</MenuItem>
                   <MenuItem value="government">Government</MenuItem>
@@ -293,11 +299,11 @@ function ResultHallTicketUpdates() {
             </Grid>
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
-                <InputLabel>Type</InputLabel>
+                <InputLabel>Type *</InputLabel>
                 <Select
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  label="Type"
+                  label="Type *"
                 >
                   <MenuItem value="">Select Type</MenuItem>
                   <MenuItem value="hallticket">Hall Ticket</MenuItem>
@@ -473,7 +479,7 @@ function ResultHallTicketUpdates() {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Description - Paragraph 1"
+                label="Description - Paragraph 1 *"
                 value={description1}
                 onChange={(e) => setDescription1(e.target.value)}
                 variant="outlined"
@@ -504,7 +510,7 @@ function ResultHallTicketUpdates() {
                 <Grid item xs={12} md={4}>
                   <TextField
                     fullWidth
-                    label="Website Title"
+                    label="Website Title *"
                     value={websiteUrls[websiteUrls.length - 1]?.title || ""}
                     onChange={(e) => {
                       const newUrls = [...websiteUrls];
@@ -518,7 +524,7 @@ function ResultHallTicketUpdates() {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="Website URL"
+                    label="Website URL *"
                     value={websiteUrls[websiteUrls.length - 1]?.url || ""}
                     onChange={(e) => {
                       const newUrls = [...websiteUrls];
@@ -579,20 +585,32 @@ function ResultHallTicketUpdates() {
             {/* File Upload Section */}
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom>
-                File Uploads
+                File Upload
               </Typography>
               <Grid container spacing={3}>
                 {/* Icon Upload */}
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} md={12}>
                   <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2 }} className="file-upload-card">
                     <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                      Icon
+                      Icon *
                     </Typography>
+                    {existingIcons.length > 0 && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => setIconDialogOpen(true)}
+                        fullWidth
+                        sx={{ mb: 1 }}
+                      >
+                        Select Existing Icons
+                      </Button>
+                    )}
+                    <Typography variant="caption" sx={{ display: 'block', mb: 1 }}>OR</Typography>
                     <input
                       type="file"
                       name="icon"
                       accept="image/*"
-                      onChange={handleIconChange}
+                      onChange={(e) => { handleIconChange(e); setSelectedIconUrl(""); }}
                       hidden
                       id="icon-upload"
                     />
@@ -604,7 +622,7 @@ function ResultHallTicketUpdates() {
                         fullWidth
                         sx={{ mb: 1 }}
                       >
-                        Select Icon
+                        Upload New Icon
                       </Button>
                     </label>
                     {iconFile && (
@@ -612,37 +630,9 @@ function ResultHallTicketUpdates() {
                         Selected: {iconFile.name}
                       </Typography>
                     )}
-                  </Paper>
-                </Grid>
-
-                {/* Image Upload */}
-                <Grid item xs={12} md={6}>
-                  <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2 }} className="file-upload-card">
-                    <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                      Image
-                    </Typography>
-                    <input
-                      type="file"
-                      name="image"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      hidden
-                      id="image-upload"
-                    />
-                    <label htmlFor="image-upload">
-                      <Button
-                        variant="outlined"
-                        component="span"
-                        startIcon={<PhotoCamera />}
-                        fullWidth
-                        sx={{ mb: 1 }}
-                      >
-                        Select Image
-                      </Button>
-                    </label>
-                    {imageFile && (
+                    {selectedIconUrl && (
                       <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
-                        Selected: {imageFile.name}
+                        Using existing icon
                       </Typography>
                     )}
                   </Paper>
@@ -681,6 +671,43 @@ function ResultHallTicketUpdates() {
           </Grid>
         </CardContent>
       </Card>
+      {/* Icon Selection Dialog */}
+      <Dialog open={iconDialogOpen} onClose={() => setIconDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          Select Existing Icon
+          <IconButton onClick={() => setIconDialogOpen(false)}><Close /></IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 2, p: 2 }}>
+            {existingIcons.map((icon, index) => (
+              <Box
+                key={index}
+                onClick={() => { setSelectedIconUrl(icon.url); setIconFile(null); setIconDialogOpen(false); toast.success('Icon selected successfully!'); }}
+                sx={{
+                  width: 100, height: 100,
+                  border: selectedIconUrl === icon.url ? '3px solid #1976d2' : '2px solid #ddd',
+                  borderRadius: 2, cursor: 'pointer', overflow: 'hidden', position: 'relative',
+                  transition: 'all 0.3s ease',
+                  '&:hover': { borderColor: '#1976d2', transform: 'scale(1.05)', boxShadow: '0 8px 16px rgba(25,118,210,0.3)' }
+                }}
+              >
+                <img src={icon.url} alt={`Icon ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {selectedIconUrl === icon.url && (
+                  <Box sx={{
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    bgcolor: 'rgba(25,118,210,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    <Typography variant="body2" sx={{ color: 'white', fontWeight: 'bold' }}>✓ Selected</Typography>
+                  </Box>
+                )}
+              </Box>
+            ))}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIconDialogOpen(false)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -18,8 +18,7 @@ import {
   Checkbox
 } from "@mui/material";
 import {
-  PhotoCamera,
-  PictureAsPdf
+  PhotoCamera
 } from "@mui/icons-material";
 
 function CurrentAffairs() {
@@ -28,7 +27,7 @@ function CurrentAffairs() {
   const [loading, setLoading] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [bannerFile, setBannerFile] = useState(null);
-  const [pdfFile, setPdfFile] = useState(null);
+  const [pdfUrl, setPdfUrl] = useState("");
   const [notification, setNotification] = useState(false);
   const [notificationDate, setNotificationDate] = useState("");
 
@@ -37,6 +36,26 @@ function CurrentAffairs() {
 
     if (!title.trim()) {
       toast.error("Title is required.", { position: "top-right" });
+      return;
+    }
+
+    if (!date) {
+      toast.error("Date is required.", { position: "top-right" });
+      return;
+    }
+
+    if (!imageFile) {
+      toast.error("Content Image is required.", { position: "top-right" });
+      return;
+    }
+
+    if (!bannerFile) {
+      toast.error("Notification Banner is required.", { position: "top-right" });
+      return;
+    }
+
+    if (!pdfUrl.trim()) {
+      toast.error("PDF URL is required.", { position: "top-right" });
       return;
     }
 
@@ -49,16 +68,36 @@ function CurrentAffairs() {
 
     setLoading(true);
     try {
+      let bannerUrl = null;
+      
+      // Upload banner first if provided
+      if (bannerFile) {
+        try {
+          const bannerFormData = new FormData();
+          bannerFormData.append('banner', bannerFile);
+          bannerFormData.append('notificationType', 'current_affairs');
+          bannerFormData.append('contentId', 'pending');
+          
+          const bannerResponse = await axios.post('/api/notification-banners', bannerFormData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          bannerUrl = bannerResponse.data.banner?.banner_url;
+        } catch (bannerError) {
+          console.error('Banner upload failed:', bannerError);
+          toast.warn('Banner upload failed, but will continue with current affairs');
+        }
+      }
+      
       const formData = new FormData();
       
       formData.append('title', title.trim());
       formData.append('date', date || '');
       formData.append('notification', notification);
       if (notificationDate) formData.append('notificationDate', notificationDate);
+      if (bannerUrl) formData.append('bannerUrl', bannerUrl);
       
-
       if (imageFile) formData.append('image', imageFile);
-      if (pdfFile) formData.append('pdf', pdfFile);
+      if (pdfUrl.trim()) formData.append('pdfUrl', pdfUrl.trim());
 
       const response = await axios.post('/api/current-affairs', formData, {
         headers: {
@@ -66,42 +105,7 @@ function CurrentAffairs() {
         },
       });
 
-      let bannerUrl = null;
-      if (bannerFile) {
-        try {
-          const bannerFormData = new FormData();
-          bannerFormData.append('banner', bannerFile);
-          bannerFormData.append('notificationType', 'current_affairs');
-          bannerFormData.append('contentId', response.data.currentAffair?.id || 'latest');
-          
-          const bannerResponse = await axios.post('/api/notification-banners', bannerFormData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
-          bannerUrl = `http://localhost:3000${bannerResponse.data.banner.banner_url}`;
-        } catch (bannerError) {
-          console.error('Banner upload failed:', bannerError);
-          toast.warn('Banner upload failed, but current affairs saved successfully');
-        }
-      }
-
       if (notification) {
-        const firebaseData = {
-          topic: "current_affairs",
-          data: {
-            notificationType: "current_affairs",
-            title: title,
-            date: date,
-            notificationDate: notificationDate,
-            scheduledTime: notificationDate ? `${notificationDate} 19:00:00` : null,
-            isScheduled: !!notificationDate,
-            bannerImageUrl: bannerUrl || "",
-            timestamp: new Date().toISOString()
-          }
-        };
-        const endpoint = notificationDate ? 
-          "http://localhost:3000/api/firebase/schedule-notification" : 
-          "http://localhost:3000/api/firebase/send-notification";
-        await axios.post(endpoint, firebaseData);
         toast.success("Current affairs saved and notification sent!");
       } else {
         toast.success("Current affairs saved successfully!");
@@ -112,7 +116,7 @@ function CurrentAffairs() {
       setDate(null);
       setImageFile(null);
       setBannerFile(null);
-      setPdfFile(null);
+      setPdfUrl("");
       setNotificationDate("");
     } catch (error) {
       console.error("Firestore error:", error.message);
@@ -136,10 +140,7 @@ function CurrentAffairs() {
 
 
 
-  const handlePdfChange = (e) => {
-    setPdfFile(e.target.files[0]);
-    toast.info("PDF selected successfully!", { position: "top-right" });
-  };
+
 
 
 
@@ -158,17 +159,16 @@ function CurrentAffairs() {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Title"
+                label="Title *"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 variant="outlined"
-                required
               />
             </Grid>
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Date"
+                label="Date *"
                 type="date"
                 value={date || ""}
                 onChange={(e) => setDate(e.target.value)}
@@ -192,7 +192,7 @@ function CurrentAffairs() {
                 <Grid item xs={12} md={4}>
                   <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2 }} className="file-upload-card">
                     <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                      Content Image
+                      Content Image *
                     </Typography>
                     <input
                       type="file"
@@ -221,7 +221,7 @@ function CurrentAffairs() {
                 <Grid item xs={12} md={4}>
                   <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2 }} className="file-upload-card">
                     <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                      Notification Banner
+                      Notification Banner *
                     </Typography>
                     <input
                       type="file"
@@ -240,39 +240,23 @@ function CurrentAffairs() {
                         color={bannerFile ? 'success' : 'primary'}
                         size="small"
                       >
-                        {bannerFile ? `Selected: ${bannerFile.name.substring(0, 15)}...` : "Select Banner (Optional)"}
+                        {bannerFile ? `Selected: ${bannerFile.name.substring(0, 15)}...` : "Select Banner"}
                       </Button>
                     </label>
                   </Paper>
                 </Grid>
 
-                {/* PDF Upload */}
+                {/* PDF URL */}
                 <Grid item xs={12} md={4}>
-                  <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2 }} className="file-upload-card">
-                    <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                      PDF
-                    </Typography>
-                    <input
-                      type="file"
-                      name="pdf"
-                      accept=".pdf"
-                      onChange={handlePdfChange}
-                      hidden
-                      id="pdf-upload"
-                    />
-                    <label htmlFor="pdf-upload">
-                      <Button
-                        variant="contained"
-                        component="span"
-                        startIcon={<PictureAsPdf />}
-                        fullWidth
-                        color={pdfFile ? 'success' : 'primary'}
-                        size="small"
-                      >
-                        {pdfFile ? `Selected: ${pdfFile.name.substring(0, 15)}...` : "Select PDF"}
-                      </Button>
-                    </label>
-                  </Paper>
+                  <TextField
+                    fullWidth
+                    label="PDF URL *"
+                    value={pdfUrl}
+                    onChange={(e) => setPdfUrl(e.target.value)}
+                    variant="outlined"
+                    placeholder="https://..."
+                    type="url"
+                  />
                 </Grid>
               </Grid>
             </Grid>

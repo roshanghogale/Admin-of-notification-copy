@@ -16,22 +16,19 @@ import {
   Paper
 } from "@mui/material";
 import {
-  PhotoCamera,
-  PictureAsPdf
+  PhotoCamera
 } from "@mui/icons-material";
 
 function StudentUpdates() {
   const [title, setTitle] = useState("");
   const [education, setEducation] = useState("");
-  const [ageRestriction, setAgeRestriction] = useState("");
-
   const [description2, setDescription2] = useState("");
   const [applicationLink, setApplicationLink] = useState("");
   const [lastDate, setLastDate] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [iconFile, setIconFile] = useState(null);
-  const [notificationPdfFile, setNotificationPdfFile] = useState(null);
-  const [selectionPdfFile, setSelectionPdfFile] = useState(null);
+  const [notificationPdfUrl, setNotificationPdfUrl] = useState("");
+  const [selectionPdfUrl, setSelectionPdfUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(false);
 
@@ -48,8 +45,6 @@ function StudentUpdates() {
       const formData = new FormData();
       formData.append('title', title.trim());
       formData.append('education', education.trim());
-      formData.append('ageRestriction', ageRestriction.trim());
-
       formData.append('description2', description2.trim());
       formData.append('applicationLink', applicationLink.trim());
       formData.append('lastDate', lastDate);
@@ -57,8 +52,8 @@ function StudentUpdates() {
       
       if (imageFile) formData.append('image', imageFile);
       if (iconFile) formData.append('icon', iconFile);
-      if (notificationPdfFile) formData.append('notificationPdf', notificationPdfFile);
-      if (selectionPdfFile) formData.append('selectionPdf', selectionPdfFile);
+      if (notificationPdfUrl.trim()) formData.append('notificationPdfUrl', notificationPdfUrl.trim());
+      if (selectionPdfUrl.trim()) formData.append('selectionPdfUrl', selectionPdfUrl.trim());
 
       const response = await fetch('/api/student-updates', {
         method: 'POST',
@@ -69,18 +64,17 @@ function StudentUpdates() {
       });
 
       if (response.ok) {
+        const result = await response.json();
         toast.success(notification ? "Student update saved and notification sent!" : "Student update saved successfully!");
         setTitle("");
         setEducation("");
-        setAgeRestriction("");
-
         setDescription2("");
         setApplicationLink("");
         setLastDate("");
         setImageFile(null);
         setIconFile(null);
-        setNotificationPdfFile(null);
-        setSelectionPdfFile(null);
+        setNotificationPdfUrl("");
+        setSelectionPdfUrl("");
         setNotification(false);
       } else {
         throw new Error('Failed to save student update');
@@ -97,13 +91,7 @@ function StudentUpdates() {
     setImageFile(e.target.files[0]);
   };
 
-  const handleNotificationPdfChange = (e) => {
-    setNotificationPdfFile(e.target.files[0]);
-  };
 
-  const handleSelectionPdfChange = (e) => {
-    setSelectionPdfFile(e.target.files[0]);
-  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -127,7 +115,7 @@ function StudentUpdates() {
             </Grid>
             
             {/* New Structure Fields */}
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12}>
               <TextField
                 fullWidth
                 label="Education"
@@ -137,17 +125,6 @@ function StudentUpdates() {
                 placeholder="Education requirement..."
               />
             </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Age Restriction"
-                value={ageRestriction}
-                onChange={(e) => setAgeRestriction(e.target.value)}
-                variant="outlined"
-                placeholder="Age restriction..."
-              />
-            </Grid>
-
             
             {/* Description and Links */}
             <Grid item xs={12} md={6}>
@@ -254,70 +231,30 @@ function StudentUpdates() {
                   </Paper>
                 </Grid>
 
-                {/* Notification PDF Upload */}
+                {/* Notification PDF URL */}
                 <Grid item xs={12} md={3}>
-                  <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2 }} className="file-upload-card">
-                    <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                      Notification PDF
-                    </Typography>
-                    <input
-                      type="file"
-                      name="notificationPdf"
-                      accept=".pdf"
-                      onChange={handleNotificationPdfChange}
-                      hidden
-                      id="notification-pdf-upload"
-                    />
-                    <label htmlFor="notification-pdf-upload">
-                      <Button
-                        variant="outlined"
-                        component="span"
-                        startIcon={<PictureAsPdf />}
-                        fullWidth
-                        sx={{ mb: 1 }}
-                      >
-                        Select Notification PDF
-                      </Button>
-                    </label>
-                    {notificationPdfFile && (
-                      <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
-                        Selected: {notificationPdfFile.name}
-                      </Typography>
-                    )}
-                  </Paper>
+                  <TextField
+                    fullWidth
+                    label="Notification PDF URL"
+                    value={notificationPdfUrl}
+                    onChange={(e) => setNotificationPdfUrl(e.target.value)}
+                    variant="outlined"
+                    placeholder="https://..."
+                    type="url"
+                  />
                 </Grid>
                 
-                {/* Selection PDF Upload */}
+                {/* Selection PDF URL */}
                 <Grid item xs={12} md={3}>
-                  <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2 }} className="file-upload-card">
-                    <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                      Selection PDF
-                    </Typography>
-                    <input
-                      type="file"
-                      name="selectionPdf"
-                      accept=".pdf"
-                      onChange={handleSelectionPdfChange}
-                      hidden
-                      id="selection-pdf-upload"
-                    />
-                    <label htmlFor="selection-pdf-upload">
-                      <Button
-                        variant="outlined"
-                        component="span"
-                        startIcon={<PictureAsPdf />}
-                        fullWidth
-                        sx={{ mb: 1 }}
-                      >
-                        Select Selection PDF
-                      </Button>
-                    </label>
-                    {selectionPdfFile && (
-                      <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
-                        Selected: {selectionPdfFile.name}
-                      </Typography>
-                    )}
-                  </Paper>
+                  <TextField
+                    fullWidth
+                    label="Selection PDF URL"
+                    value={selectionPdfUrl}
+                    onChange={(e) => setSelectionPdfUrl(e.target.value)}
+                    variant="outlined"
+                    placeholder="https://..."
+                    type="url"
+                  />
                 </Grid>
               </Grid>
             </Grid>

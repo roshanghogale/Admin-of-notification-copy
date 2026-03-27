@@ -22,6 +22,8 @@ import { toast, ToastContainer } from "react-toastify";
 import axios from 'axios';
 import "react-toastify/dist/ReactToastify.css";
 import "../App.css";
+import { NOTIFICATION_CONFIG } from "../config/notificationConfig";
+import { sanitizeTopic } from "../utils/topicSanitizer";
 
 // Add the same data arrays as SliderPage
 const districts = [
@@ -173,6 +175,26 @@ function NewsPage() {
       return;
     }
 
+    if (!titleDescription.trim()) {
+      toast.error("Title Description is required.", { position: "top-right" });
+      return;
+    }
+
+    if (!subTitle.trim()) {
+      toast.error("Sub Title is required.", { position: "top-right" });
+      return;
+    }
+
+    if (!description1.trim()) {
+      toast.error("Description Paragraph 1 is required.", { position: "top-right" });
+      return;
+    }
+
+    if (!imageFile) {
+      toast.error("News Image is required.", { position: "top-right" });
+      return;
+    }
+
     if (!notification) {
       toast.warn(
         "Notification checkbox is not checked. The notification will not be sent.",
@@ -191,6 +213,14 @@ function NewsPage() {
       formData.append('description1', description1.trim());
       formData.append('description2', description2.trim());
       formData.append('notification', notification);
+      formData.append('isSpecific', isSpecific);
+      formData.append('otherType', otherType);
+      formData.append('educationCategories', JSON.stringify(educationCategories));
+      formData.append('bachelorDegrees', JSON.stringify(bachelorDegrees));
+      formData.append('mastersDegrees', JSON.stringify(mastersDegrees));
+      formData.append('selectedDistrict', JSON.stringify(selectedDistrict));
+      formData.append('selectedTaluka', JSON.stringify(selectedTaluka));
+      formData.append('ageGroups', JSON.stringify(ageGroups));
       
       if (imageFile) {
         formData.append('image', imageFile);
@@ -200,46 +230,8 @@ function NewsPage() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      if (notification) {
-        let fcmTopics = [];
-        if (isSpecific && otherType === 'education') {
-          if (educationCategories.includes("All")) {
-            fcmTopics = ["all"];
-          } else if (educationCategories.includes("10th") || educationCategories.includes("12th")) {
-            fcmTopics = educationCategories.filter(cat => cat === "10th" || cat === "12th");
-          } else {
-            fcmTopics = bachelorDegrees.length > 0 ? bachelorDegrees : ["general"];
-          }
-        } else if (isSpecific && otherType === 'location') {
-          if (Array.isArray(selectedDistrict) && selectedDistrict.length === districts.filter(d => d !== "Select District").length) {
-            fcmTopics = ["all"];
-          } else {
-            fcmTopics = Array.isArray(selectedTaluka) ? selectedTaluka : ["general"];
-          }
-        } else if (isSpecific && otherType === 'age group') {
-          fcmTopics = ageGroups.length > 0 ? ageGroups : ["general"];
-        } else {
-          fcmTopics = ["news"];
-        }
-
-        for (const topic of fcmTopics) {
-          const firebaseData = {
-            topic: topic,
-            data: {
-              notificationType: "news",
-              title: title,
-              titleDescription: titleDescription,
-              subTitle: subTitle,
-              type: type,
-              date: date,
-              description1: description1,
-              description2: description2,
-              timestamp: new Date().toISOString()
-            }
-          };
-          await axios.post("https://admin.mahaalert.cloud/api/firebase/send-notification", firebaseData);
-        }
-      }
+      const documentId = response.data.news?.id;
+      
       toast.success("News saved successfully!", { position: "top-right" });
 
       // Reset form
@@ -293,17 +285,16 @@ function NewsPage() {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Title"
+                label="Title *"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 variant="outlined"
-                required
               />
             </Grid>
             <Grid item xs={12} md={3}>
               <TextField
                 fullWidth
-                label="Update Type"
+                label="Update Type *"
                 value={type}
                 onChange={(e) => setType(e.target.value)}
                 variant="outlined"
@@ -326,7 +317,7 @@ function NewsPage() {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Title Description"
+                label="Title Description *"
                 value={titleDescription}
                 onChange={(e) => setTitleDescription(e.target.value)}
                 variant="outlined"
@@ -336,7 +327,7 @@ function NewsPage() {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Sub Title"
+                label="Sub Title *"
                 value={subTitle}
                 onChange={(e) => setSubTitle(e.target.value)}
                 variant="outlined"
@@ -348,7 +339,7 @@ function NewsPage() {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Description - Paragraph 1"
+                label="Description - Paragraph 1 *"
                 value={description1}
                 onChange={(e) => setDescription1(e.target.value)}
                 variant="outlined"
@@ -672,7 +663,7 @@ function NewsPage() {
               <Paper elevation={2} sx={{ p: 2, textAlign: 'center', borderRadius: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }} className="file-upload-card">
                 <Box>
                   <Typography variant="subtitle2" gutterBottom color="primary" fontWeight={600}>
-                    News Image
+                    News Image *
                   </Typography>
                   <input
                     type="file"

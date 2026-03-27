@@ -89,7 +89,6 @@ function ManageAll() {
     { value: "freeStudyMaterialGovernment", label: "Free Study Material - Government", icon: "🏛️", color: "#512da8" },
     { value: "freeStudyMaterialPolice", label: "Free Study Material - Police & Defence", icon: "👮", color: "#689f38" },
     { value: "freeStudyMaterialBanking", label: "Free Study Material - Banking", icon: "🏦", color: "#00796b" },
-    { value: "freeStudyMaterialSelf", label: "Free Study Material - Self Improvement", icon: "📈", color: "#ff5722" },
     { value: "job_updates", label: "Job Updates", icon: "💼", color: "#1976d2" },
     { value: "news", label: "News", icon: "📰", color: "#388e3c" },
     { value: "notification_files", label: "Notification Files", icon: "🔔", color: "#9c27b0" },
@@ -805,7 +804,10 @@ function ManageAll() {
       {!loading && documents.length > 0 && (
         <Grid container spacing={2}>
           {documents.map((document) => {
-            const imageUrl = document.imageUrl || document.image_url || document.bannerUrl || document.banner_url || document.iconUrl || document.icon_url || document.pdf_url || null;
+            // For result_hallticket_updates, only use icon_url (no image_url)
+            const imageUrl = selectedType === 'result_hallticket_updates' 
+              ? (document.iconUrl || document.icon_url || null)
+              : (document.imageUrl || document.image_url || document.bannerUrl || document.banner_url || document.iconUrl || document.icon_url || document.pdf_url || null);
             const videoUrl = document.videoUrl || document.video_url || null;
             const mediaType = document.media_type || 'image';
             const displayImageUrl = imageUrl && !imageUrl.startsWith('http') ? `https://admin.mahaalert.cloud${imageUrl}` : imageUrl?.replace('http://', 'https://');
