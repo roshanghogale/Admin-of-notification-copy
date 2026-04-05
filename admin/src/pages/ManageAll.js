@@ -374,9 +374,9 @@ function ManageAll() {
         const data = await response.json();
         const filteredData = data.studyMaterials.filter(item => {
           let type = collectionName.replace('freeStudyMaterial', '').toLowerCase();
-          if (type === 'government') type = 'governmentfree';
-          if (type === 'police') type = 'policefree';
-          if (type === 'banking') type = 'bankingfree';
+          if (type === 'government') type = 'government';
+          if (type === 'police') type = 'police & defence';
+          if (type === 'banking') type = 'banking';
           return item.type === type;
         });
         setDocuments(filteredData || []);

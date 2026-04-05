@@ -143,9 +143,9 @@ function FreeStudyMaterialPage() {
                   label="Type *"
                 >
                   <MenuItem value="">Select Type</MenuItem>
-                  <MenuItem value="governmentfree">Government</MenuItem>
-                  <MenuItem value="policefree">Police & Defence</MenuItem>
-                  <MenuItem value="bankingfree">Banking</MenuItem>
+                  <MenuItem value="government">Government</MenuItem>
+                  <MenuItem value="police & defence">Police & Defence</MenuItem>
+                  <MenuItem value="banking">Banking</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
