@@ -16,7 +16,8 @@ const createNotificationBanner = async (req, res) => {
       return res.status(400).json({ error: 'Banner image is required' });
     }
 
-    const bannerUrl = `/uploads/notification-banners/${req.file.filename}`;
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const bannerUrl = `${baseUrl}/uploads/notification-banners/${req.file.filename}`;
 
     const result = await pool.query(`
       INSERT INTO notification_banners (

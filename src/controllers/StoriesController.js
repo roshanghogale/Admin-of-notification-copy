@@ -19,7 +19,7 @@ const createStory = async (req, res) => {
       return res.status(400).json({ error: 'Title is required' });
     }
 
-    let iconUrl = null;
+    let iconUrl = req.body.iconUrl || null;
     let bannerUrl = null;
     let videoUrl = null;
     const finalMediaType = mediaType || 'image';
@@ -223,7 +223,7 @@ const updateStory = async (req, res) => {
     }
     
     const existingStory = existingResult.rows[0];
-    let iconUrl = req.body.icon_url || existingStory.icon_url;
+    let iconUrl = req.body.iconUrl || req.body.icon_url || existingStory.icon_url;
     let bannerUrl = req.body.banner_url || existingStory.banner_url;
     let videoUrl = req.body.video_url || existingStory.video_url;
     const mediaType = req.body.media_type || existingStory.media_type || 'image';
@@ -264,11 +264,11 @@ const updateStory = async (req, res) => {
         banner_url = $15, video_url = $16, media_type = $17, updated_at = NOW()
       WHERE id = $18 RETURNING *
     `, [
-      req.body.title || existingStory.title,
-      req.body.post_document_id || existingStory.post_document_id,
-      req.body.web_url || existingStory.web_url,
-      req.body.type || existingStory.type,
-      req.body.other_type || existingStory.other_type,
+      req.body.title !== undefined ? req.body.title : existingStory.title,
+      req.body.post_document_id !== undefined ? req.body.post_document_id : existingStory.post_document_id,
+      req.body.web_url !== undefined ? req.body.web_url : existingStory.web_url,
+      req.body.type !== undefined ? req.body.type : existingStory.type,
+      req.body.other_type !== undefined ? req.body.other_type : existingStory.other_type,
       req.body.is_main_story !== undefined ? req.body.is_main_story : existingStory.is_main_story,
       parseJsonField(req.body.education_categories, existingStory.education_categories),
       parseJsonField(req.body.bachelor_degrees, existingStory.bachelor_degrees),

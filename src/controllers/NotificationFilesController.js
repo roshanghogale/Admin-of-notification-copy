@@ -75,7 +75,8 @@ const createNotificationFile = async (req, res) => {
 
     let imageUrl = null;
     if (req.file) {
-      imageUrl = `/uploads/${req.file.filename}`;
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      imageUrl = `${baseUrl}/uploads/${req.file.filename}`;
     }
 
     const insertQuery = `
@@ -138,7 +139,7 @@ const updateNotificationFile = async (req, res) => {
     const values = [
       title,
       body,
-      documentId,
+      req.body.documentId || req.body.document_id,
       isSpecific || false,
       otherType || null,
       educationCategories ? JSON.stringify(parseJsonField(educationCategories) || []) : null,

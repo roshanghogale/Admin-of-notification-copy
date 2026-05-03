@@ -35,14 +35,12 @@ const createResultHallticket = async (req, res) => {
     parsedMastersDegrees = parseJsonField(mastersDegrees) || [];
     parsedWebsiteUrls = parseJsonField(websiteUrls) || [];
 
-    let iconUrl = null;
+    let iconUrl = req.body.iconUrl || null;
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     
-    if (req.files) {
-      if (req.files.icon) {
-        iconUrl = `${baseUrl}/uploads/${req.files.icon[0].filename}`;
-      }
+    if (req.files && req.files.icon) {
+      iconUrl = `${baseUrl}/uploads/${req.files.icon[0].filename}`;
     }
 
     const educationRequirement = (parsedEducationCategories.length > 0 && (parsedEducationCategories.includes('10th') || parsedEducationCategories.includes('12th') || parsedEducationCategories.includes('All')))

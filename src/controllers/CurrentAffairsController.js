@@ -28,7 +28,7 @@ const createCurrentAffair = async (req, res) => {
     let bannerUrl = req.body.bannerUrl || null;
     let pdfUrl = req.body.pdfUrl || null;
 
-    const baseUrl = req.get('host').includes('mahaalert.cloud') ? 'https://admin.mahaalert.cloud' : `${req.protocol}://${req.get('host')}`;
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
     
     if (req.files) {
       if (req.files.image) {

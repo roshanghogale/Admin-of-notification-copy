@@ -212,11 +212,11 @@ const updateNews = async (req, res) => {
         image_url = $7, updated_at = NOW()
       WHERE id = $8 RETURNING *
     `, [
-      req.body.title || existingNews.title,
-      req.body.titleDescription || existingNews.title_description,
-      req.body.subTitle || existingNews.sub_title,
-      req.body.type || existingNews.type,
-      req.body.date || existingNews.date,
+      req.body.title !== undefined ? req.body.title : existingNews.title,
+      req.body.titleDescription !== undefined ? req.body.titleDescription : (req.body.title_description !== undefined ? req.body.title_description : existingNews.title_description),
+      req.body.subTitle !== undefined ? req.body.subTitle : (req.body.sub_title !== undefined ? req.body.sub_title : existingNews.sub_title),
+      req.body.type !== undefined ? req.body.type : existingNews.type,
+      req.body.date !== undefined ? req.body.date : existingNews.date,
       parseJsonField(req.body.description, existingNews.description),
       imageUrl,
       id

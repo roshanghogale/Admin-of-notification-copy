@@ -288,13 +288,13 @@ const updateSlider = async (req, res) => {
         taluka = $12, age_groups = $13, bharty_types = $14, image_url = $15, updated_at = NOW()
       WHERE id = $16 RETURNING *
     `, [
-      req.body.title || existingSlider.title,
-      req.body.post_document_id || existingSlider.post_document_id,
-      req.body.web_url || existingSlider.web_url,
-      req.body.type || existingSlider.type,
-      req.body.page_type || existingSlider.page_type,
+      req.body.title !== undefined ? req.body.title : existingSlider.title,
+      req.body.post_document_id !== undefined ? req.body.post_document_id : existingSlider.post_document_id,
+      req.body.web_url !== undefined ? req.body.web_url : existingSlider.web_url,
+      req.body.type !== undefined ? req.body.type : existingSlider.type,
+      req.body.page_type !== undefined ? req.body.page_type : existingSlider.page_type,
       req.body.is_specific !== undefined ? req.body.is_specific : existingSlider.is_specific,
-      req.body.other_type || existingSlider.other_type,
+      req.body.other_type !== undefined ? req.body.other_type : existingSlider.other_type,
       parseJsonField(req.body.education_categories, existingSlider.education_categories),
       parseJsonField(req.body.bachelor_degrees, existingSlider.bachelor_degrees),
       parseJsonField(req.body.masters_degrees, existingSlider.masters_degrees),

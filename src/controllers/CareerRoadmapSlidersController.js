@@ -44,7 +44,8 @@ const createCareerRoadmapSlider = async (req, res) => {
 
     let imageUrl = null;
     if (req.file) {
-      imageUrl = `/uploads/${req.file.filename}`;
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      imageUrl = `${baseUrl}/uploads/${req.file.filename}`;
     }
 
     const insertQuery = `
@@ -76,13 +77,14 @@ const updateCareerRoadmapSlider = async (req, res) => {
 
     const updateQuery = `
       UPDATE career_roadmap_sliders SET
-        url = $1
-      WHERE id = $2
+        url = $1, image_url = $2
+      WHERE id = $3
       RETURNING *
     `;
 
     const values = [
       url || null,
+      req.body.image_url || null,
       id
     ];
 

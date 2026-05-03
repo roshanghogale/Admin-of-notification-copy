@@ -421,20 +421,31 @@ const updateJobUpdate = async (req, res) => {
     console.log('ID:', id);
     console.log('Data:', updateData);
     
+    const safeJsonStringify = (val) => {
+      if (val === null || val === undefined) return null;
+      if (typeof val === 'string') {
+        try { JSON.parse(val); return val; } catch { return JSON.stringify(val); }
+      }
+      return JSON.stringify(val);
+    };
+
     const result = await pool.query(`
       UPDATE job_updates SET 
         title = $1, salary = $2, last_date = $3, post_name = $4, 
         education_categories = $5, bachelor_degrees = $6, masters_degrees = $7,
         age_requirement = $8, job_place = $9, application_fees = $10,
         application_link = $11, type = $12, sub_type = $13, 
-        education_requirement = $14, total_posts = $15, note = $16
-      WHERE id = $17 RETURNING *
+        education_requirement = $14, total_posts = $15, note = $16,
+        icon_url = $17, image_url = $18, pdf_url = $19, selection_pdf_url = $20, syllabus_pdf_url = $21
+      WHERE id = $22 RETURNING *
     `, [
       updateData.title, updateData.salary, updateData.last_date, updateData.post_name,
-      JSON.stringify(updateData.education_categories), JSON.stringify(updateData.bachelor_degrees), 
-      JSON.stringify(updateData.masters_degrees), updateData.age_requirement, updateData.job_place,
+      safeJsonStringify(updateData.education_categories), safeJsonStringify(updateData.bachelor_degrees), 
+      safeJsonStringify(updateData.masters_degrees), updateData.age_requirement, updateData.job_place,
       updateData.application_fees, updateData.application_link, updateData.type, updateData.sub_type,
-      decodeHtml(updateData.education_requirement), updateData.total_posts, updateData.note, id
+      decodeHtml(updateData.education_requirement), updateData.total_posts, updateData.note,
+      updateData.icon_url, updateData.image_url, updateData.pdf_url, updateData.selection_pdf_url, updateData.syllabus_pdf_url,
+      id
     ]);
     
     if (result.rows.length === 0) {
