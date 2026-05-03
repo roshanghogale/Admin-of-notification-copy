@@ -54,13 +54,9 @@ function ResultHallTicketUpdates() {
   const [iconDialogOpen, setIconDialogOpen] = useState(false);
 
   React.useEffect(() => {
-    axios.get('/api/result-halltickets').then(res => {
-      const icons = (res.data.resultHalltickets || [])
-        .filter(r => r.icon_url)
-        .map(r => ({ url: r.icon_url, title: r.title }))
-        .filter((icon, index, self) => index === self.findIndex(i => i.url === icon.url));
-      setExistingIcons(icons);
-    }).catch(() => {});
+    axios.get('/api/icons')
+      .then(res => setExistingIcons(res.data.icons || []))
+      .catch(() => {});
   }, []);
 
   const ageGroupOptions = ["14 to 18", "19 to 25", "26 to 31", "32 and above"];

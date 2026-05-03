@@ -59,13 +59,9 @@ function StoryPage() {
   const [iconDialogOpen, setIconDialogOpen] = useState(false);
 
   React.useEffect(() => {
-    axios.get('/api/stories').then(res => {
-      const icons = (res.data.stories || [])
-        .filter(s => s.icon_url)
-        .map(s => ({ url: s.icon_url, title: s.title }))
-        .filter((icon, index, self) => index === self.findIndex(i => i.url === icon.url));
-      setExistingIcons(icons);
-    }).catch(() => {});
+    axios.get('/api/icons')
+      .then(res => setExistingIcons(res.data.icons || []))
+      .catch(() => {});
   }, []);
 
   // District and Taluka data
