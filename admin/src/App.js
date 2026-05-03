@@ -89,21 +89,9 @@ function App() {
 
   // Fetch existing icons on component mount
   React.useEffect(() => {
-    const fetchExistingIcons = async () => {
-      try {
-        const response = await axios.get('/api/job-updates');
-        const icons = response.data.jobUpdates
-          .filter(job => job.icon_url)
-          .map(job => ({ url: job.icon_url, title: job.title }))
-          .filter((icon, index, self) => 
-            index === self.findIndex(i => i.url === icon.url)
-          );
-        setExistingIcons(icons);
-      } catch (error) {
-        console.error('Error fetching existing icons:', error);
-      }
-    };
-    fetchExistingIcons();
+    axios.get('/api/icons')
+      .then(res => setExistingIcons(res.data.icons || []))
+      .catch(() => {});
   }, []);
 
   const educationOptions = [
