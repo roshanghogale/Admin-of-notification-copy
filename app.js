@@ -65,6 +65,41 @@ app.use("/api/notification-files", notificationFilesRoute);
 app.use("/api/notification-files", notificationUploadRoute);
 app.use("/api/career-roadmap-sliders", careerRoadmapSlidersRoute);
 
+// Shared icons endpoint - aggregates unique icons from job_updates, result_hallticket_updates, stories
+app.get('/api/icons', async (req, res) => {
+  try {
+    const { Pool } = require('pg');
+    const pool = new Pool({
+      user: process.env.DB_USER || 'postgres',
+      host: process.env.DB_HOST || 'localhost',
+      database: process.env.DB_NAME || 'OneRoadMap',
+      password: process.env.DB_PASSWORD || 'roshan',
+      port: process.env.DB_PORT || 5432,
+    });
+    const result = await pool.query(`
+      SELECT DISTINCT ON (icon_url) icon_url, title FROM (
+        SELECT icon_url, title FROM job_updates WHERE icon_url IS NOT NULL
+        UNION ALL
+        SELECT icon_url, title FROM result_hallticket_updates WHERE icon_url IS NOT NULL
+        UNION ALL
+        SELECT icon_url, title FROM stories WHERE icon_url IS NOT NULL
+      ) combined
+      ORDER BY icon_url
+    `);
+    const currentBase = `${req.protocol}://${req.get('host')}`;
+    const icons = result.rows.map(r => ({
+      title: r.title,
+      url: r.icon_url.includes('/uploads/')
+        ? `${currentBase}/uploads/${r.icon_url.split('/uploads/')[1]}`
+        : r.icon_url
+    }));
+    res.json({ icons });
+  } catch (error) {
+    console.error('Error fetching icons:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Public endpoint for Android app to fetch job updates
 app.get('/public/job-updates', async (req, res) => {
   try {
