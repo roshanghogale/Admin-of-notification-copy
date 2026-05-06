@@ -14,36 +14,29 @@ const pool = new Pool({
 
 const createSlider = async (req, res) => {
   try {
-    const { title, postDocumentId, webUrl, type, pageType, isSpecific, otherType, educationCategories, bachelorDegrees, mastersDegrees, selectedDistrict, selectedTaluka, bhartyTypes } = req.body;
+    const { title, postDocumentId, webUrl, type, isSpecific, otherType, educationCategories, bachelorDegrees, mastersDegrees, selectedDistrict, selectedTaluka, bhartyTypes } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ error: 'Title is required' });
     }
 
-    let imageUrl = null;
+    // pageType is now an array sent as JSON string
+    const pageTypes = parseJsonField(req.body.pageType) || [];
+    if (pageTypes.length === 0) {
+      return res.status(400).json({ error: 'At least one page type is required' });
+    }
 
+    let imageUrl = null;
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    
     if (req.files && req.files.image) {
       imageUrl = `${baseUrl}/uploads/${req.files.image[0].filename}`;
     }
 
-    // Fix sequence before insert
-    await fixSequence(pool, 'sliders');
-    
-    const result = await pool.query(`
-      INSERT INTO sliders (
-        title, post_document_id, web_url, type, page_type, is_specific,
-        other_type, education_categories, bachelor_degrees, masters_degrees, 
-        district, taluka, age_groups, bharty_types, image_url, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW()) 
-      RETURNING *
-    `, [
+    const commonValues = [
       title.trim(),
       type === 'promotion' ? null : (postDocumentId?.trim() || null),
       type === 'promotion' ? (webUrl?.trim() || null) : null,
       type?.trim() || '',
-      pageType?.trim() || '',
       isSpecific === 'true' || isSpecific === true,
       otherType?.trim() || '',
       JSON.stringify(parseJsonField(educationCategories) || []),
@@ -54,12 +47,27 @@ const createSlider = async (req, res) => {
       JSON.stringify(parseJsonField(req.body.ageGroups) || []),
       JSON.stringify(parseJsonField(bhartyTypes) || []),
       imageUrl
-    ]);
+    ];
 
-    const slider = result.rows[0];
-    
+    // Insert one row per page type
+    const sliders = [];
+    for (const pt of pageTypes) {
+      await fixSequence(pool, 'sliders');
+      const result = await pool.query(`
+        INSERT INTO sliders (
+          title, post_document_id, web_url, type, page_type, is_specific,
+          other_type, education_categories, bachelor_degrees, masters_degrees,
+          district, taluka, age_groups, bharty_types, image_url, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
+        RETURNING *
+      `, [...commonValues.slice(0, 4), pt, ...commonValues.slice(4)]);
+      sliders.push(result.rows[0]);
+    }
+
+    // Send notification once using the first inserted slider
     if (req.body.notification === 'true' || req.body.notification === true) {
       try {
+        const slider = sliders[0];
         const notificationData = {
           type: 'slider',
           id: slider.id.toString(),
@@ -68,7 +76,7 @@ const createSlider = async (req, res) => {
           post_document_id: slider.post_document_id || '',
           web_url: slider.web_url || '',
           slider_type: slider.type || '',
-          page_type: slider.page_type || '',
+          page_type: pageTypes.join(','),
           is_specific: String(slider.is_specific || false),
           other_type: slider.other_type || '',
           education_categories: JSON.stringify(slider.education_categories || []),
@@ -81,88 +89,54 @@ const createSlider = async (req, res) => {
           image_url: slider.image_url || '',
           created_at: slider.created_at ? new Date(slider.created_at).toISOString() : ''
         };
-        
+
         let topics = ['all'];
-        
         if (slider.is_specific) {
-          const sanitizeTopic = (topic) => {
-            return topic
-              .replace(/\s+/g, '')
-              .replace(/\./g, '')
-              .replace(/[()]/g, '')
-              .replace(/&/g, '')
-              .replace(/\//g, '')
-              .replace(/-/g, '')
-              .replace(/[^a-zA-Z0-9]/g, '')
-              .substring(0, 900);
-          };
-          
+          const sanitizeTopic = (topic) => topic
+            .replace(/\s+/g, '').replace(/\./g, '').replace(/[()]/g, '')
+            .replace(/&/g, '').replace(/\//g, '').replace(/-/g, '')
+            .replace(/[^a-zA-Z0-9]/g, '').substring(0, 900);
+
           const eduCategories = parseJsonField(educationCategories) || [];
           const bachelorDegreesList = parseJsonField(bachelorDegrees) || [];
           const districtList = parseJsonField(selectedDistrict) || [];
           const talukaList = parseJsonField(selectedTaluka) || [];
           const ageGroupsList = parseJsonField(req.body.ageGroups) || [];
-          
+
           if (otherType === 'education') {
-            if (eduCategories.includes('All')) {
-              topics = ['all'];
-            } else {
+            if (eduCategories.includes('All')) { topics = ['all']; }
+            else {
               topics = [];
-              const basicEducation = eduCategories.filter(cat => cat === '10th' || cat === '12th');
-              topics.push(...basicEducation);
-              
-              const otherCategories = eduCategories.filter(cat => cat !== '10th' && cat !== '12th');
-              if (otherCategories.length > 0) {
-                const sanitizedDegrees = bachelorDegreesList.map(sanitizeTopic).filter(t => t);
-                topics.push(...sanitizedDegrees);
-              }
-              
+              topics.push(...eduCategories.filter(c => c === '10th' || c === '12th'));
+              const others = eduCategories.filter(c => c !== '10th' && c !== '12th');
+              if (others.length > 0) topics.push(...bachelorDegreesList.map(sanitizeTopic).filter(t => t));
               if (topics.length === 0) topics = ['all'];
             }
           } else if (otherType === 'location') {
-            if (districtList.includes('All') || talukaList.includes('All')) {
-              topics = ['all'];
-            } else {
-              topics = talukaList.length > 0 ? talukaList.map(sanitizeTopic).filter(t => t) : ['all'];
-            }
+            topics = (districtList.includes('All') || talukaList.includes('All')) ? ['all']
+              : talukaList.length > 0 ? talukaList.map(sanitizeTopic).filter(t => t) : ['all'];
           } else if (otherType === 'age group') {
-            if (ageGroupsList.includes('All')) {
-              topics = ['all'];
-            } else {
-              topics = ageGroupsList.length > 0 ? ageGroupsList.map(ag => sanitizeTopic(ag.replace(/ and /g, ''))).filter(t => t) : ['all'];
-            }
+            topics = ageGroupsList.includes('All') ? ['all']
+              : ageGroupsList.length > 0 ? ageGroupsList.map(ag => sanitizeTopic(ag.replace(/ and /g, ''))).filter(t => t) : ['all'];
           } else if (otherType === 'bharty types') {
+            const bhartyTopicMap = { 'Government': 'governmentfree', 'Police & Defence': 'policefree', 'Banking': 'bankingfree' };
             const bhartyTypesList = parseJsonField(bhartyTypes) || [];
-            const bhartyTopicMap = {
-              'Government': 'governmentfree',
-              'Police & Defence': 'policefree',
-              'Banking': 'bankingfree'
-            };
-            topics = bhartyTypesList.length > 0 
-              ? bhartyTypesList.map(type => bhartyTopicMap[type] || 'all').filter(t => t)
-              : ['all'];
+            topics = bhartyTypesList.length > 0 ? bhartyTypesList.map(t => bhartyTopicMap[t] || 'all').filter(t => t) : ['all'];
           }
         }
-        
+
         const NotificationService = require('../service/NotificationService');
         for (const topic of topics) {
-          await NotificationService.sendNotificationToTopic(
-            topic,
-            null,
-            null,
-            null,
-            null,
-            notificationData
-          );
+          await NotificationService.sendNotificationToTopic(topic, null, null, null, null, notificationData);
         }
       } catch (notificationError) {
         console.error('Notification failed:', notificationError);
       }
     }
-    
-    res.status(201).json({ 
-      message: 'Slider created successfully', 
-      slider: slider 
+
+    res.status(201).json({
+      message: `Slider created for ${sliders.length} page type(s) successfully`,
+      sliders
     });
   } catch (error) {
     console.error('Error creating slider:', error);
