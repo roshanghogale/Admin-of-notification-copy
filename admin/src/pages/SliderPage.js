@@ -29,7 +29,7 @@ function SliderPage() {
   const [webUrl, setWebUrl] = useState("");
   const [title, setTitle] = useState("");
   const [type, setType] = useState("");
-  const [pageType, setPageType] = useState("");
+  const [pageType, setPageType] = useState([]);
   const [isSpecific, setIsSpecific] = useState(false);
   const [otherType, setOtherType] = useState("");
   const [educationCategories, setEducationCategories] = useState([]);
@@ -169,7 +169,7 @@ function SliderPage() {
       return;
     }
 
-    if (!pageType) {
+    if (!pageType || pageType.length === 0) {
       toast.error("Page Type is required.", { position: "top-right" });
       return;
     }
@@ -198,7 +198,7 @@ function SliderPage() {
       formData.append('postDocumentId', postDocumentId);
       formData.append('webUrl', webUrl);
       formData.append('type', type);
-      formData.append('pageType', pageType);
+      formData.append('pageType', JSON.stringify(pageType));
       formData.append('isSpecific', isSpecific);
       formData.append('otherType', isSpecific ? otherType : '');
       formData.append('educationCategories', JSON.stringify(isSpecific && otherType === 'education' ? educationCategories : []));
@@ -218,16 +218,14 @@ function SliderPage() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      const documentId = response.data.slider?.id;
-      
-      toast.success("Slider saved successfully!", { position: "top-right" });
+      toast.success(`Slider saved for ${response.data.sliders.length} page type(s)!`, { position: "top-right" });
 
       // Reset form
       setTitle("");
       setPostDocumentId("");
       setWebUrl("");
       setType("");
-      setPageType("");
+      setPageType([]);
       setIsSpecific(false);
       setOtherType("");
       setEducationCategories([]);
@@ -273,16 +271,21 @@ function SliderPage() {
               <FormControl fullWidth>
                 <InputLabel>Page Type *</InputLabel>
                 <Select
+                  multiple
                   value={pageType}
                   onChange={(e) => setPageType(e.target.value)}
-                  label="Page Type *"
+                  input={<OutlinedInput label="Page Type *" />}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((v) => <Chip key={v} label={v} size="small" />)}
+                    </Box>
+                  )}
                 >
-                  <MenuItem value="">Select Page Type</MenuItem>
-                  <MenuItem value="home">Home</MenuItem>
-                  <MenuItem value="chat">Chat</MenuItem>
-                  <MenuItem value="banking jobs">Banking Jobs</MenuItem>
-                  <MenuItem value="private jobs">Private Jobs</MenuItem>
-                  <MenuItem value="government jobs">Government Jobs</MenuItem>
+                  <MenuItem value="home"><Checkbox checked={pageType.includes('home')} />Home</MenuItem>
+                  <MenuItem value="chat"><Checkbox checked={pageType.includes('chat')} />Chat</MenuItem>
+                  <MenuItem value="banking jobs"><Checkbox checked={pageType.includes('banking jobs')} />Banking Jobs</MenuItem>
+                  <MenuItem value="private jobs"><Checkbox checked={pageType.includes('private jobs')} />Private Jobs</MenuItem>
+                  <MenuItem value="government jobs"><Checkbox checked={pageType.includes('government jobs')} />Government Jobs</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
